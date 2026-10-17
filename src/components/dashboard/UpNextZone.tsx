@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowUpRight, Shuffle, PlayCircle, Edit3, UserCheck } from 'lucide-react';
+import { ArrowUpRight, Shuffle, PlayCircle, Edit3, UserCheck, Swords } from 'lucide-react';
 import { Match, SessionPlayer } from '../../types/equiplay';
 import { Button } from '../common/Button';
 
@@ -13,6 +13,58 @@ interface UpNextZoneProps {
   onEditLineup: (match: Match) => void;
   onReassignCourt: (matchId: string, newCourtName: string) => void;
 }
+
+const UpNextCourtSvg: React.FC = () => (
+  <svg
+    className="absolute inset-0 w-full h-full pointer-events-none opacity-15"
+    xmlns="http://www.w3.org/2000/svg"
+    preserveAspectRatio="none"
+    viewBox="0 0 500 220"
+  >
+    {/* Outer Doubles Boundary Lines */}
+    <rect
+      x="20"
+      y="18"
+      width="460"
+      height="184"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      className="text-amber-400"
+    />
+    {/* Inner Singles Lines */}
+    <line
+      x1="20"
+      y1="38"
+      x2="480"
+      y2="38"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeDasharray="4 4"
+      className="text-amber-400/50"
+    />
+    <line
+      x1="20"
+      y1="182"
+      x2="480"
+      y2="182"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeDasharray="4 4"
+      className="text-amber-400/50"
+    />
+    {/* Left Service Lines */}
+    <line x1="90" y1="18" x2="90" y2="202" stroke="currentColor" strokeWidth="1.5" className="text-amber-400/60" />
+    <line x1="170" y1="18" x2="170" y2="202" stroke="currentColor" strokeWidth="1.5" className="text-amber-400/60" />
+    <line x1="20" y1="110" x2="170" y2="110" stroke="currentColor" strokeWidth="1.5" className="text-amber-400/60" />
+    {/* Right Service Lines */}
+    <line x1="410" y1="18" x2="410" y2="202" stroke="currentColor" strokeWidth="1.5" className="text-amber-400/60" />
+    <line x1="330" y1="18" x2="330" y2="202" stroke="currentColor" strokeWidth="1.5" className="text-amber-400/60" />
+    <line x1="330" y1="110" x2="480" y2="110" stroke="currentColor" strokeWidth="1.5" className="text-amber-400/60" />
+    {/* Center Net Line Divider */}
+    <line x1="250" y1="10" x2="250" y2="210" stroke="#ffffff" strokeWidth="2.5" strokeDasharray="2 4" opacity="0.6" />
+  </svg>
+);
 
 export const UpNextZone: React.FC<UpNextZoneProps> = ({
   upcomingMatches,
@@ -43,12 +95,15 @@ export const UpNextZone: React.FC<UpNextZoneProps> = ({
   // Find all courts that are currently open (not in progress)
   const openCourts = allCourts.filter((c) => !inProgressCourts.has(c));
 
+  // If 1 upcoming match: full width grid-cols-1! If 2 or more: 2 columns on desktop
+  const gridColsClass = upcomingMatches.length === 1 ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2';
+
   return (
-    <section className="space-y-3" aria-labelledby="up-next-heading">
+    <section className="space-y-3.5" aria-labelledby="up-next-heading">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ArrowUpRight className="w-5 h-5 text-amber-400" />
-          <h2 id="up-next-heading" className="text-lg font-black text-slate-100">
+          <h2 id="up-next-heading" className="text-lg font-black text-slate-100 tracking-tight">
             Up Next Queue
           </h2>
         </div>
@@ -57,7 +112,7 @@ export const UpNextZone: React.FC<UpNextZoneProps> = ({
         </span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className={`grid ${gridColsClass} gap-4`}>
         {upcomingMatches.map((match) => {
           const isCourtOccupied = inProgressCourts.has(match.courtName);
 
@@ -74,20 +129,23 @@ export const UpNextZone: React.FC<UpNextZoneProps> = ({
           return (
             <div
               key={match.id}
-              className={`bg-slate-900 border rounded-2xl p-5 space-y-4 flex flex-col justify-between ${
-                match.isManualLineup ? 'border-sky-500/50' : 'border-amber-400/30'
+              className={`relative overflow-hidden bg-gradient-to-br from-slate-900/95 via-slate-900 to-amber-950/30 border-2 rounded-3xl p-5 sm:p-6 flex flex-col justify-between gap-5 transition-all shadow-xl shadow-black/30 ${
+                match.isManualLineup ? 'border-sky-500/50' : 'border-amber-400/40'
               }`}
             >
+              {/* Badminton Court Surface Markings */}
+              <UpNextCourtSvg />
+
               {/* Header */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+              <div className="relative z-10 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
                   <span
-                    className={`w-2.5 h-2.5 rounded-full ${
-                      match.isManualLineup ? 'bg-sky-400' : 'bg-amber-400'
+                    className={`w-3 h-3 rounded-full ${
+                      match.isManualLineup ? 'bg-sky-400 shadow-[0_0_8px_#38bdf8]' : 'bg-amber-400 shadow-[0_0_8px_#fbbf24]'
                     } animate-pulse`}
                   />
                   <div>
-                    <span className="text-base font-black text-slate-100 block">
+                    <span className="text-lg font-black text-slate-100 block tracking-tight">
                       {match.courtName} (Next)
                     </span>
                     {match.isManualLineup && (
@@ -104,7 +162,7 @@ export const UpNextZone: React.FC<UpNextZoneProps> = ({
                     onClick={() => onEditLineup(match)}
                     aria-label={`Manually edit lineup for ${match.courtName}`}
                     title="Edit/Swap players or change court"
-                    className="min-h-[44px] px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold inline-flex items-center gap-1 transition-colors border border-slate-700"
+                    className="min-h-[44px] px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold inline-flex items-center gap-1 transition-colors border border-slate-700 shadow-sm"
                   >
                     <Edit3 className="w-3.5 h-3.5 text-sky-400" />
                     <span>Edit</span>
@@ -115,7 +173,7 @@ export const UpNextZone: React.FC<UpNextZoneProps> = ({
                     onClick={() => onReshuffle(match.id)}
                     aria-label={`Reshuffle pairing for ${match.courtName}`}
                     title="Reshuffle combinations"
-                    className="min-h-[44px] px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-bold inline-flex items-center gap-1 transition-colors border border-slate-700"
+                    className="min-h-[44px] px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-bold inline-flex items-center gap-1 transition-colors border border-slate-700 shadow-sm"
                   >
                     <Shuffle className="w-3.5 h-3.5" />
                     <span>Shuffle</span>
@@ -123,66 +181,68 @@ export const UpNextZone: React.FC<UpNextZoneProps> = ({
                 </div>
               </div>
 
-              {/* Roster Matchup */}
-              <div className="grid grid-cols-5 items-center gap-2 py-1">
+              {/* Court Surface & Net Display */}
+              <div className="relative z-10 grid grid-cols-5 items-stretch gap-2 py-1">
                 {/* Team A */}
-                <div className="col-span-2 bg-slate-950/60 rounded-xl p-2.5 border border-slate-800/80 text-center">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400/80 block mb-1">
+                <div className="col-span-2 bg-slate-950/90 rounded-2xl p-3 sm:p-3.5 border border-amber-500/30 flex flex-col justify-center text-center shadow-lg shadow-black/20">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block mb-1.5">
                     Team A
                   </span>
-                  <p className="text-xs font-bold text-slate-200 truncate">{playerA1}</p>
-                  <p className="text-xs font-bold text-slate-200 truncate">{playerA2}</p>
+                  <p className="text-sm sm:text-base font-bold text-slate-100 truncate">{playerA1}</p>
+                  <p className="text-sm sm:text-base font-bold text-slate-100 truncate">{playerA2}</p>
                 </div>
 
-                {/* VS */}
-                <div className="col-span-1 text-center">
-                  <span className="text-[11px] font-black text-slate-500 uppercase">VS</span>
+                {/* Center Net Divider */}
+                <div className="col-span-1 flex flex-col items-center justify-center relative">
+                  <div className="absolute inset-y-1 w-0.5 bg-gradient-to-b from-white/70 via-slate-400 to-white/70 opacity-60" />
+                  <div className="relative z-10 w-9 h-9 rounded-full bg-slate-900 border-2 border-slate-700 flex items-center justify-center text-slate-300 shadow-xl">
+                    <Swords className="w-4 h-4 text-amber-400" />
+                  </div>
+                  <span className="relative z-10 text-[9px] font-black text-slate-400 mt-1 uppercase tracking-widest bg-slate-950/90 px-1 rounded">
+                    NET
+                  </span>
                 </div>
 
                 {/* Team B */}
-                <div className="col-span-2 bg-slate-950/60 rounded-xl p-2.5 border border-slate-800/80 text-center">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-sky-400/80 block mb-1">
+                <div className="col-span-2 bg-slate-950/90 rounded-2xl p-3 sm:p-3.5 border border-sky-500/30 flex flex-col justify-center text-center shadow-lg shadow-black/20">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-sky-400 block mb-1.5">
                     Team B
                   </span>
-                  <p className="text-xs font-bold text-slate-200 truncate">{playerB1}</p>
-                  <p className="text-xs font-bold text-slate-200 truncate">{playerB2}</p>
+                  <p className="text-sm sm:text-base font-bold text-slate-100 truncate">{playerB1}</p>
+                  <p className="text-sm sm:text-base font-bold text-slate-100 truncate">{playerB2}</p>
                 </div>
               </div>
 
-              {/* CTAs: If current court is occupied but another court is open, offer 1-tap reassign & play! */}
-              {isCourtOccupied && otherOpenCourts.length > 0 ? (
-                <div className="space-y-2">
-                  <Button
-                    variant="primary"
-                    size="md"
-                    fullWidth
-                    onClick={() => {
-                      onReassignCourt(match.id, otherOpenCourts[0]);
-                      // Start immediately on the open court
-                      onStartMatch(match.id);
-                    }}
-                    className="font-bold bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-950/20"
+              {/* Alternative open courts quick switch */}
+              {otherOpenCourts.length > 0 && isCourtOccupied && (
+                <div className="relative z-10 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-2.5 flex items-center justify-between text-xs">
+                  <span className="text-emerald-300 font-medium">
+                    ⚡ {otherOpenCourts[0]} is free right now!
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onReassignCourt(match.id, otherOpenCourts[0])}
+                    className="font-bold text-emerald-400 hover:text-emerald-300 underline text-xs"
                   >
-                    <PlayCircle className="w-4 h-4 mr-2" />
-                    Play on {otherOpenCourts[0]} Now (Open)
-                  </Button>
-                  <p className="text-[11px] text-center text-slate-400">
-                    {otherOpenCourts[0]} is currently available for this match.
-                  </p>
+                    Move to {otherOpenCourts[0]}
+                  </button>
                 </div>
-              ) : (
-                <Button
-                  variant={isCourtOccupied ? 'secondary' : 'primary'}
-                  size="md"
-                  fullWidth
-                  disabled={isCourtOccupied}
-                  onClick={() => onStartMatch(match.id)}
-                  className="font-bold"
-                >
-                  <PlayCircle className="w-4 h-4 mr-2" />
-                  {isCourtOccupied ? `Waiting for ${match.courtName} to Finish` : 'Put On Court'}
-                </Button>
               )}
+
+              {/* Start Match CTA */}
+              <Button
+                variant={isCourtOccupied ? 'outline' : 'primary'}
+                size="lg"
+                fullWidth
+                disabled={isCourtOccupied}
+                onClick={() => onStartMatch(match.id)}
+                className="relative z-10 font-bold shadow-xl shadow-emerald-950/30 min-h-[48px] text-sm"
+              >
+                <PlayCircle className="w-5 h-5 mr-2" />
+                {isCourtOccupied
+                  ? `${match.courtName} Busy (Match in Progress)`
+                  : `Put on Court & Start`}
+              </Button>
             </div>
           );
         })}
