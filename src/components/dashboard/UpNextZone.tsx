@@ -8,6 +8,7 @@ interface UpNextZoneProps {
   inProgressCourts: Set<string>;
   allCourts: string[];
   playersById: Map<string, SessionPlayer>;
+  activePlayingPlayerIds?: Set<string>;
   onStartMatch: (matchId: string) => void;
   onReshuffle: (matchId: string) => void;
   onEditLineup: (match: Match) => void;
@@ -71,6 +72,7 @@ export const UpNextZone: React.FC<UpNextZoneProps> = ({
   inProgressCourts,
   allCourts,
   playersById,
+  activePlayingPlayerIds = new Set(),
   onStartMatch,
   onReshuffle,
   onEditLineup,
@@ -230,19 +232,34 @@ export const UpNextZone: React.FC<UpNextZoneProps> = ({
               )}
 
               {/* Start Match CTA */}
-              <Button
-                variant={isCourtOccupied ? 'outline' : 'primary'}
-                size="lg"
-                fullWidth
-                disabled={isCourtOccupied}
-                onClick={() => onStartMatch(match.id)}
-                className="relative z-10 font-bold shadow-xl shadow-emerald-950/30 min-h-[48px] text-sm"
-              >
-                <PlayCircle className="w-5 h-5 mr-2" />
-                {isCourtOccupied
-                  ? `${match.courtName} Busy (Match in Progress)`
-                  : `Put on Court & Start`}
-              </Button>
+              {(() => {
+                const matchPlayerIds = [...match.teamA, ...match.teamB];
+                const hasPlayerPlaying = matchPlayerIds.some((id) =>
+                  activePlayingPlayerIds.has(id)
+                );
+                const isDisabled = isCourtOccupied || hasPlayerPlaying;
+
+                let buttonLabel = 'Put on Court & Start';
+                if (isCourtOccupied) {
+                  buttonLabel = `${match.courtName} Busy (Match in Progress)`;
+                } else if (hasPlayerPlaying) {
+                  buttonLabel = 'Players Playing on Another Court';
+                }
+
+                return (
+                  <Button
+                    variant={isDisabled ? 'outline' : 'primary'}
+                    size="lg"
+                    fullWidth
+                    disabled={isDisabled}
+                    onClick={() => onStartMatch(match.id)}
+                    className="relative z-10 font-bold shadow-xl shadow-emerald-950/30 min-h-[48px] text-sm"
+                  >
+                    <PlayCircle className="w-5 h-5 mr-2" />
+                    {buttonLabel}
+                  </Button>
+                );
+              })()}
             </div>
           );
         })}

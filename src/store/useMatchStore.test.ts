@@ -248,4 +248,121 @@ describe('useMatchStore State & Transitions', () => {
     expect(matchOnCourt2?.isManualLineup).toBe(true);
     expect(matchOnCourt2?.startTime).toBeDefined();
   });
+
+  it('strictly limits concurrent upcoming matches to active player capacity (11 players, 4 courts -> max 2 matches)', () => {
+    const store = useMatchStore.getState();
+    store.setCourts(['Court 1', 'Court 2', 'Court 3', 'Court 4']);
+
+    // Add 12 players: 11 active, 1 away (user's exact scenario)
+    const names = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l'];
+    names.forEach((name) => {
+      store.addPlayer(name, name !== 'e'); // 'e' is away
+    });
+
+    store.startSession();
+
+    const matches = useMatchStore.getState().matches;
+    const upcoming = matches.filter((m) => m.status === 'UPCOMING');
+
+    // 11 active players -> can ONLY fill Math.floor(11 / 4) = 2 matches!
+    expect(upcoming).toHaveLength(2);
+
+    // Verify all players across both upcoming matches are unique
+    const playerIds = upcoming.flatMap((m) => [...m.teamA, ...m.teamB]);
+    expect(new Set(playerIds).size).toBe(8);
+
+    // Away player 'e' must not be in any match
+    const awayPlayer = useMatchStore.getState().players.find((p) => p.name === 'e')!;
+    expect(playerIds).not.toContain(awayPlayer.id);
+
+    // Start both matches on Court 1 and Court 2
+    store.startMatch(upcoming[0].id);
+    store.startMatch(upcoming[1].id);
+
+    // Now 8 players are IN_PROGRESS, leaving only 3 active bench players off-court
+    const inProgress = useMatchStore.getState().matches.filter((m) => m.status === 'IN_PROGRESS');
+    expect(inProgress).toHaveLength(2);
+
+    // No upcoming matches should exist because 3 bench players < 4 required for doubles
+    const upcomingAfterStarting = useMatchStore
+      .getState()
+      .matches.filter((m) => m.status === 'UPCOMING');
+    expect(upcomingAfterStarting).toHaveLength(0);
+  });
+
+  it('prevents starting a match if any player is already playing on another court', () => {
+    const store = useMatchStore.getState();
+    store.setCourts(['Court 1', 'Court 2']);
+
+    store.addPlayer('P1', true);
+    store.addPlayer('P2', true);
+    store.addPlayer('P3', true);
+    store.addPlayer('P4', true);
+    store.addPlayer('P5', true);
+    store.addPlayer('P6', true);
+    store.addPlayer('P7', true);
+    store.addPlayer('P8', true);
+
+    store.startSession();
+
+    const [p1, p2, p3, p4] = useMatchStore.getState().players;
+
+    // Start a match on Court 1 with P1, P2, P3, P4
+    store.createManualMatch(
+      'Court 1',
+      [p1.id, p2.id],
+      [p3.id, p4.id],
+      true // startImmediately
+    );
+
+    // Simulate an upcoming match on Court 2 that contains P1 (who is busy on Court 1)
+    const [p5, p6, p7] = useMatchStore.getState().players.slice(4);
+    useMatchStore.setState((state) => ({
+      matches: [
+        ...state.matches,
+        {
+          id: 'test-conflict-match',
+          courtName: 'Court 2',
+          teamA: [p1.id, p5.id], // P1 is already on Court 1!
+          teamB: [p6.id, p7.id],
+          status: 'UPCOMING',
+          syncStatus: 'LOCAL',
+          isManualLineup: true,
+        },
+      ],
+    }));
+
+    // Attempting to start the match on Court 2 must NOT transition to IN_PROGRESS
+    store.startMatch('test-conflict-match');
+
+    const conflictMatch = useMatchStore
+      .getState()
+      .matches.find((m) => m.id === 'test-conflict-match');
+    expect(conflictMatch?.status).toBe('UPCOMING');
+  });
+
+  it('rejects manual match creation when duplicate players are selected or players are playing', () => {
+    const store = useMatchStore.getState();
+    store.setCourts(['Court 1', 'Court 2']);
+    store.addPlayer('P1', true);
+    store.addPlayer('P2', true);
+    store.addPlayer('P3', true);
+    store.addPlayer('P4', true);
+    store.startSession();
+
+    const [p1, p2, p3] = useMatchStore.getState().players;
+
+    const initialMatchCount = useMatchStore.getState().matches.length;
+
+    // Try to create manual match with duplicate player P1
+    store.createManualMatch(
+      'Court 1',
+      [p1.id, p1.id], // duplicate!
+      [p2.id, p3.id],
+      false
+    );
+
+    // Should not add match
+    expect(useMatchStore.getState().matches.length).toBe(initialMatchCount);
+  });
 });

@@ -43,8 +43,8 @@ export const ManualMatchModal: React.FC<ManualMatchModalProps> = ({
       onCourtPlayerIds.add(m.teamB[1]);
     });
 
-  // Available candidate players for manual selection
-  const candidatePlayers = players.filter((p) => !onCourtPlayerIds.has(p.id));
+  // Available candidate players for manual selection (must be active and not on court)
+  const candidatePlayers = players.filter((p) => !onCourtPlayerIds.has(p.id) && p.isActive);
 
   // Initialize or reset when opened
   useEffect(() => {
@@ -52,10 +52,9 @@ export const ManualMatchModal: React.FC<ManualMatchModalProps> = ({
       setCourtName(defaultCourtName || courtNames[0] || 'Court 1');
 
       // Auto-populate with top available bench players
-      const availableActive = candidatePlayers.filter((p) => p.isActive);
-      if (availableActive.length >= 4) {
-        setTeamA([availableActive[0].id, availableActive[3].id]);
-        setTeamB([availableActive[1].id, availableActive[2].id]);
+      if (candidatePlayers.length >= 4) {
+        setTeamA([candidatePlayers[0].id, candidatePlayers[3].id]);
+        setTeamB([candidatePlayers[1].id, candidatePlayers[2].id]);
       } else {
         setTeamA(['', '']);
         setTeamB(['', '']);
@@ -72,7 +71,8 @@ export const ManualMatchModal: React.FC<ManualMatchModalProps> = ({
   const allSelectedIds = [teamA[0], teamA[1], teamB[0], teamB[1]];
   const hasDuplicates = new Set(allSelectedIds).size !== 4;
   const hasEmpty = allSelectedIds.some((id) => !id);
-  const isValid = !hasDuplicates && !hasEmpty;
+  const hasEnoughPlayers = candidatePlayers.length >= 4;
+  const isValid = !hasDuplicates && !hasEmpty && hasEnoughPlayers;
 
   const handleSelectPlayer = (
     slot: 'A1' | 'A2' | 'B1' | 'B2',
@@ -136,9 +136,16 @@ export const ManualMatchModal: React.FC<ManualMatchModalProps> = ({
           <option value="">-- Select Player --</option>
           {candidatePlayers.map((p) => {
             const partner = p.partnerId ? players.find((pl) => pl.id === p.partnerId) : null;
+            const isPickedInAnotherSlot =
+              allSelectedIds.filter((id) => id && id !== val).includes(p.id);
+
             return (
-              <option key={p.id} value={p.id}>
-                {p.name} {partner ? `(Partner: ${partner.name})` : `(${p.gamesPlayedToday} games)`}
+              <option
+                key={p.id}
+                value={p.id}
+                disabled={isPickedInAnotherSlot}
+              >
+                {p.name} {isPickedInAnotherSlot ? '(Selected)' : partner ? `(Partner: ${partner.name})` : `(${p.gamesPlayedToday} games)`}
               </option>
             );
           })}
@@ -157,6 +164,23 @@ export const ManualMatchModal: React.FC<ManualMatchModalProps> = ({
         <p className="text-xs text-slate-400">
           Pick any 4 players manually and choose to either put them on court immediately or queue them up next.
         </p>
+
+        {/* Insufficient Candidate Players Warning */}
+        {!hasEnoughPlayers && (
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs space-y-2">
+            <div className="flex items-center gap-2 font-bold text-amber-300">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>Insufficient Players Off-Court</span>
+            </div>
+            <p>
+              Doubles requires 4 active players off court, but only{' '}
+              <strong className="text-amber-100 font-bold">{candidatePlayers.length}</strong> active player
+              {candidatePlayers.length === 1 ? ' is' : 's are'} currently off court
+              {candidatePlayers.length > 0 ? ` (${candidatePlayers.map((p) => p.name).join(', ')})` : ''}
+              . Wait for an on-court match to finish or add walk-in players.
+            </p>
+          </div>
+        )}
 
         {/* Court Selection */}
         <div className="space-y-1.5 bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800">

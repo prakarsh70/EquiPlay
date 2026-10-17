@@ -35,10 +35,34 @@ export const EditMatchModal: React.FC<EditMatchModalProps> = ({
   const [courtName, setCourtName] = useState<string>('');
   const [markAwayPlayerId, setMarkAwayPlayerId] = useState<string | null>(null);
 
+  // Find players currently on court in other matches
+  const onCourtOtherMatchIds = new Set<string>();
+  if (match) {
+    matches
+      .filter((m) => m.status === 'IN_PROGRESS' && m.id !== match.id)
+      .forEach((m) => {
+        onCourtOtherMatchIds.add(m.teamA[0]);
+        onCourtOtherMatchIds.add(m.teamA[1]);
+        onCourtOtherMatchIds.add(m.teamB[0]);
+        onCourtOtherMatchIds.add(m.teamB[1]);
+      });
+  }
+
+  // Available candidate players (not currently playing in another match)
+  const candidatePlayers = players.filter((p) => !onCourtOtherMatchIds.has(p.id));
+  const activeCandidates = candidatePlayers.filter((p) => p.isActive);
+
   useEffect(() => {
     if (match) {
-      setTeamA([...match.teamA]);
-      setTeamB([...match.teamB]);
+      const isCandidate = (id: string) => candidatePlayers.some((p) => p.id === id);
+      setTeamA([
+        isCandidate(match.teamA[0]) ? match.teamA[0] : '',
+        isCandidate(match.teamA[1]) ? match.teamA[1] : '',
+      ]);
+      setTeamB([
+        isCandidate(match.teamB[0]) ? match.teamB[0] : '',
+        isCandidate(match.teamB[1]) ? match.teamB[1] : '',
+      ]);
       setCourtName(match.courtName);
       setMarkAwayPlayerId(null);
     }
@@ -46,24 +70,14 @@ export const EditMatchModal: React.FC<EditMatchModalProps> = ({
 
   if (!match) return null;
 
-  // Find players currently on court in other matches
-  const onCourtOtherMatchIds = new Set<string>();
-  matches
-    .filter((m) => m.status === 'IN_PROGRESS' && m.id !== match.id)
-    .forEach((m) => {
-      onCourtOtherMatchIds.add(m.teamA[0]);
-      onCourtOtherMatchIds.add(m.teamA[1]);
-      onCourtOtherMatchIds.add(m.teamB[0]);
-      onCourtOtherMatchIds.add(m.teamB[1]);
-    });
-
-  // Available candidate players (not currently playing in another match)
-  const candidatePlayers = players.filter((p) => !onCourtOtherMatchIds.has(p.id));
-
   const allSelectedIds = [teamA[0], teamA[1], teamB[0], teamB[1]];
   const hasDuplicates = new Set(allSelectedIds).size !== 4;
   const hasEmpty = allSelectedIds.some((id) => !id);
-  const isValid = !hasDuplicates && !hasEmpty;
+  const allSelectedActive = allSelectedIds.every(
+    (id) => players.find((p) => p.id === id)?.isActive
+  );
+  const hasEnoughPlayers = activeCandidates.length >= 4;
+  const isValid = !hasDuplicates && !hasEmpty && hasEnoughPlayers && allSelectedActive;
 
   const handleSwapPartners = () => {
     setTeamA([teamA[0], teamB[0]]);
@@ -102,11 +116,21 @@ export const EditMatchModal: React.FC<EditMatchModalProps> = ({
           onChange={(e) => onChange(e.target.value)}
           className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-slate-100 font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 min-h-[48px]"
         >
-          {candidatePlayers.map((player) => (
-            <option key={player.id} value={player.id}>
-              {player.name} {player.isActive ? `(${player.gamesPlayedToday} games)` : '(Away)'}
-            </option>
-          ))}
+          <option value="">-- Select Player --</option>
+          {candidatePlayers.map((player) => {
+            const isPickedInAnotherSlot =
+              allSelectedIds.filter((id) => id && id !== value).includes(player.id);
+
+            return (
+              <option
+                key={player.id}
+                value={player.id}
+                disabled={isPickedInAnotherSlot}
+              >
+                {player.name} {isPickedInAnotherSlot ? '(Selected in another position)' : player.isActive ? `(${player.gamesPlayedToday} games)` : '(Away)'}
+              </option>
+            );
+          })}
         </select>
       </div>
     );
@@ -126,6 +150,25 @@ export const EditMatchModal: React.FC<EditMatchModalProps> = ({
         <p className="text-xs text-slate-400">
           Manually pick or swap players for this match, or reassign to an open court.
         </p>
+
+        {/* Insufficient Candidate Players Warning */}
+        {!hasEnoughPlayers && (
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs space-y-2">
+            <div className="flex items-center gap-2 font-bold text-amber-300">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>Insufficient Players Off-Court</span>
+            </div>
+            <p>
+              Doubles requires 4 active players off court, but only{' '}
+              <strong className="text-amber-100 font-bold">{activeCandidates.length}</strong> active player
+              {activeCandidates.length === 1 ? ' is' : 's are'} currently off court
+              {activeCandidates.length > 0
+                ? ` (${activeCandidates.map((p) => p.name).join(', ')})`
+                : ''}
+              . Wait for an on-court match to finish or add walk-in players on the bench.
+            </p>
+          </div>
+        )}
 
         {/* Court Reassignment Selector */}
         <div className="space-y-1 bg-slate-950/60 p-3 rounded-xl border border-slate-800">

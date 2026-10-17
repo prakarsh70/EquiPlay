@@ -10,6 +10,14 @@ import {
 } from '../types/equiplay';
 import { generateNextMatches, reshufflePairing } from '../utils/matchmaker';
 
+const notifyUser = (message: string) => {
+  if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+    window.alert(message);
+  } else {
+    console.warn(message);
+  }
+};
+
 interface MatchStoreState {
   currentView: AppView;
   config: SessionConfig;
@@ -160,7 +168,7 @@ export const useMatchStore = create<MatchStoreState>()(
             (m.teamA.includes(playerId) || m.teamB.includes(playerId))
         );
         if (isBusy) {
-          alert('Cannot remove player while they are currently on court playing.');
+          notifyUser('Cannot remove player while they are currently on court playing.');
           return;
         }
 
@@ -251,23 +259,38 @@ export const useMatchStore = create<MatchStoreState>()(
         const { config, players, matches } = get();
         if (!config.sessionStartTime) return;
 
-        // 1. Identify which courts have IN_PROGRESS matches
+        // 1. Identify which courts have IN_PROGRESS matches and who is actively playing
         const inProgressMatches = matches.filter((m) => m.status === 'IN_PROGRESS');
         const inProgressCourtNames = new Set(inProgressMatches.map((m) => m.courtName));
+        const inProgressPlayerIds = new Set<string>();
+        inProgressMatches.forEach((m) => {
+          m.teamA.forEach((id) => inProgressPlayerIds.add(id));
+          m.teamB.forEach((id) => inProgressPlayerIds.add(id));
+        });
 
-        // 2. Auto-rebalance: Check if any court is completely IDLE (not playing and has no upcoming match)
+        // 2. Identify active players (filter out away/late players)
+        const activePlayerIds = new Set(players.filter((p) => p.isActive).map((p) => p.id));
+
+        // 3. Drop any UPCOMING match containing players who are currently IN_PROGRESS or INACTIVE
+        const survivingMatches = matches.filter((m) => {
+          if (m.status !== 'UPCOMING') return true;
+          const matchPlayers = [...m.teamA, ...m.teamB];
+          const hasPlayingPlayer = matchPlayers.some((id) => inProgressPlayerIds.has(id));
+          const hasInactivePlayer = matchPlayers.some((id) => !activePlayerIds.has(id));
+          return !hasPlayingPlayer && !hasInactivePlayer;
+        });
+
+        const survivingUpcomingMatches = survivingMatches.filter((m) => m.status === 'UPCOMING');
+        const upcomingCourtNames = new Set(survivingUpcomingMatches.map((m) => m.courtName));
+
+        // 4. Auto-rebalance: Check if any court is completely IDLE (not playing and has no upcoming match)
         // while another court is busy playing AND holds an auto-generated upcoming match.
-        // We should immediately redirect the upcoming match to the idle court so players can play NOW!
-        const upcomingMatches = matches.filter((m) => m.status === 'UPCOMING');
-        const upcomingCourtNames = new Set(upcomingMatches.map((m) => m.courtName));
-
         const idleCourts = config.courtNames.filter(
           (c) => !inProgressCourtNames.has(c) && !upcomingCourtNames.has(c)
         );
 
         if (idleCourts.length > 0) {
-          // Find an auto-generated upcoming match assigned to a court that is currently playing
-          const misplacedMatch = upcomingMatches.find(
+          const misplacedMatch = survivingUpcomingMatches.find(
             (m) => !m.isManualLineup && inProgressCourtNames.has(m.courtName)
           );
 
@@ -278,83 +301,102 @@ export const useMatchStore = create<MatchStoreState>()(
                 m.id === misplacedMatch.id ? { ...m, courtName: targetIdleCourt } : m
               ),
             }));
-            // Continue syncQueue with updated assignment
             return get().syncQueue(forceRefresh);
           }
         }
 
-        const lockedPlayerIds = new Set<string>();
-        inProgressMatches.forEach((m) => {
-          lockedPlayerIds.add(m.teamA[0]);
-          lockedPlayerIds.add(m.teamA[1]);
-          lockedPlayerIds.add(m.teamB[0]);
-          lockedPlayerIds.add(m.teamB[1]);
-        });
+        // 5. Build locked players set (in-progress players are physically playing)
+        const lockedPlayerIds = new Set<string>(inProgressPlayerIds);
 
-        // 3. Preserve manually edited UPCOMING matches (coordinator intentionally picked these players)
-        const manualUpcomingMatches = matches.filter(
-          (m) => m.status === 'UPCOMING' && m.isManualLineup
-        );
+        // 6. Preserve valid manual UPCOMING matches
+        const manualUpcomingMatches = survivingUpcomingMatches.filter((m) => m.isManualLineup);
         manualUpcomingMatches.forEach((m) => {
-          lockedPlayerIds.add(m.teamA[0]);
-          lockedPlayerIds.add(m.teamA[1]);
-          lockedPlayerIds.add(m.teamB[0]);
-          lockedPlayerIds.add(m.teamB[1]);
+          m.teamA.forEach((id) => lockedPlayerIds.add(id));
+          m.teamB.forEach((id) => lockedPlayerIds.add(id));
         });
-
         const manualCourts = new Set(manualUpcomingMatches.map((m) => m.courtName));
 
-        // 4. For auto-generated UPCOMING matches:
-        // Determine which courts need an UPCOMING match
+        // 7. Auto-generated upcoming matches handling:
         let courtsNeedingUpcoming: string[];
+        let keptMatches: Match[];
 
         if (forceRefresh) {
-          // Re-evaluate all courts that don't have manual lineups
+          // In forceRefresh mode: clear ALL auto-generated upcoming matches to re-rank fairly
+          keptMatches = survivingMatches.filter(
+            (m) => m.status !== 'UPCOMING' || m.isManualLineup
+          );
           courtsNeedingUpcoming = config.courtNames.filter((c) => !manualCourts.has(c));
         } else {
-          // Only courts that currently don't have ANY upcoming match
-          const allUpcomingCourts = new Set(
-            matches.filter((m) => m.status === 'UPCOMING').map((m) => m.courtName)
-          );
-          courtsNeedingUpcoming = config.courtNames.filter((c) => !allUpcomingCourts.has(c));
+          // In incremental mode: validate existing auto-generated upcoming matches
+          const validAutoUpcoming: Match[] = [];
+          for (const m of survivingUpcomingMatches) {
+            if (m.isManualLineup) continue;
+            const matchPlayerIds = [...m.teamA, ...m.teamB];
+            const hasConflict = matchPlayerIds.some((id) => lockedPlayerIds.has(id));
+            if (!hasConflict && !validAutoUpcoming.some((v) => v.courtName === m.courtName)) {
+              validAutoUpcoming.push(m);
+              matchPlayerIds.forEach((id) => lockedPlayerIds.add(id));
+            }
+          }
+
+          const existingUpcomingCourts = new Set([
+            ...manualCourts,
+            ...validAutoUpcoming.map((m) => m.courtName),
+          ]);
+
+          keptMatches = [
+            ...survivingMatches.filter((m) => m.status !== 'UPCOMING' || m.isManualLineup),
+            ...validAutoUpcoming,
+          ];
+
+          courtsNeedingUpcoming = config.courtNames.filter((c) => !existingUpcomingCourts.has(c));
         }
 
-        if (courtsNeedingUpcoming.length === 0) return;
+        if (courtsNeedingUpcoming.length === 0) {
+          if (keptMatches.length !== matches.length) {
+            set({ matches: keptMatches });
+          }
+          return;
+        }
 
-        // CRITICAL SORT: IDLE/EMPTY courts (courts with NO match in progress) MUST COME FIRST!
-        // This prevents queuing matches behind busy courts when an empty court is waiting!
+        // Priority sort: IDLE courts with no active match come first
         courtsNeedingUpcoming.sort((courtA, courtB) => {
           const aIsPlaying = inProgressCourtNames.has(courtA);
           const bIsPlaying = inProgressCourtNames.has(courtB);
-          if (!aIsPlaying && bIsPlaying) return -1; // courtA is empty -> prioritize courtA!
-          if (aIsPlaying && !bIsPlaying) return 1;  // courtB is empty -> prioritize courtB!
+          if (!aIsPlaying && bIsPlaying) return -1;
+          if (aIsPlaying && !bIsPlaying) return 1;
           return 0;
         });
 
-        // 5. Generate fair matches using all available players (not locked in progress or manual lineups)
-        const busyList = Array.from(lockedPlayerIds);
-        const pairings = generateNextMatches(
-          players,
-          courtsNeedingUpcoming.length,
-          busyList
+        // 8. Calculate how many more matches can physically be generated
+        const freeBenchPlayers = players.filter(
+          (p) => p.isActive && !lockedPlayerIds.has(p.id)
         );
+        const maxMoreMatchesPossible = Math.floor(freeBenchPlayers.length / 4);
 
-        if (pairings.length === 0 && !forceRefresh) return;
+        if (maxMoreMatchesPossible === 0) {
+          if (keptMatches.length !== matches.length) {
+            set({ matches: keptMatches });
+          }
+          return;
+        }
 
-        // Filter out old auto-generated UPCOMING matches for the courts being updated
-        const courtsBeingUpdated = new Set(courtsNeedingUpcoming.slice(0, pairings.length));
-        const filteredMatches = forceRefresh
-          ? matches.filter(
-              (m) =>
-                m.status !== 'UPCOMING' ||
-                m.isManualLineup ||
-                !courtsBeingUpdated.has(m.courtName)
-            )
-          : matches;
+        const matchesToGenerate = Math.min(maxMoreMatchesPossible, courtsNeedingUpcoming.length);
+        const targetCourts = courtsNeedingUpcoming.slice(0, matchesToGenerate);
+
+        const busyList = Array.from(lockedPlayerIds);
+        const pairings = generateNextMatches(players, matchesToGenerate, busyList);
+
+        if (pairings.length === 0) {
+          if (keptMatches.length !== matches.length) {
+            set({ matches: keptMatches });
+          }
+          return;
+        }
 
         const newMatches: Match[] = pairings.map((pairing, idx) => ({
           id: crypto.randomUUID(),
-          courtName: courtsNeedingUpcoming[idx],
+          courtName: targetCourts[idx],
           teamA: pairing.teamA,
           teamB: pairing.teamB,
           status: 'UPCOMING',
@@ -362,20 +404,20 @@ export const useMatchStore = create<MatchStoreState>()(
           isManualLineup: false,
         }));
 
-        set(() => ({
-          matches: [...filteredMatches, ...newMatches],
-        }));
+        set({
+          matches: [...keptMatches, ...newMatches],
+        });
       },
 
       startSession: () => {
         const { players, config } = get();
         const activeCount = players.filter((p) => p.isActive).length;
         if (activeCount < 4) {
-          alert('You need at least 4 active players to start a session.');
+          notifyUser('You need at least 4 active players to start a session.');
           return;
         }
         if (config.courtNames.length < 1) {
-          alert('You need at least 1 court to start.');
+          notifyUser('You need at least 1 court to start.');
           return;
         }
 
@@ -393,15 +435,50 @@ export const useMatchStore = create<MatchStoreState>()(
       },
 
       startMatch: (matchId) => {
-        const { matches } = get();
+        const { matches, players } = get();
         const targetMatch = matches.find((m) => m.id === matchId);
         if (!targetMatch) return;
 
+        // 1. Verify court is not already playing
         const isCourtOccupied = matches.some(
           (m) => m.courtName === targetMatch.courtName && m.status === 'IN_PROGRESS'
         );
         if (isCourtOccupied) {
-          alert(`${targetMatch.courtName} already has an active match in progress.`);
+          notifyUser(`${targetMatch.courtName} already has an active match in progress.`);
+          return;
+        }
+
+        // 2. Verify none of the 4 players are currently playing in an active match
+        const inProgressMatches = matches.filter((m) => m.status === 'IN_PROGRESS');
+        const activePlayingPlayerIds = new Set<string>();
+        inProgressMatches.forEach((m) => {
+          m.teamA.forEach((id) => activePlayingPlayerIds.add(id));
+          m.teamB.forEach((id) => activePlayingPlayerIds.add(id));
+        });
+
+        const targetPlayerIds = [...targetMatch.teamA, ...targetMatch.teamB];
+        const busyConflicts = targetPlayerIds.filter((id) => activePlayingPlayerIds.has(id));
+        if (busyConflicts.length > 0) {
+          const names = busyConflicts
+            .map((id) => players.find((p) => p.id === id)?.name || id)
+            .join(', ');
+          notifyUser(`Cannot start match: ${names} is/are already playing on another court!`);
+          return;
+        }
+
+        // 3. Verify all 4 players are active
+        const inactive = targetPlayerIds.filter((id) => {
+          const p = players.find((pl) => pl.id === id);
+          return !p || !p.isActive;
+        });
+        if (inactive.length > 0) {
+          notifyUser('Cannot start match: one or more players are marked as away.');
+          return;
+        }
+
+        // 4. Verify 4 distinct players
+        if (new Set(targetPlayerIds).size !== 4) {
+          notifyUser('Cannot start match: match must contain 4 distinct players.');
           return;
         }
 
@@ -413,8 +490,8 @@ export const useMatchStore = create<MatchStoreState>()(
           ),
         }));
 
-        // Calculate next upcoming match in advance for the bench
-        get().syncQueue();
+        // Incremental sync: keep other valid upcoming matches while preventing conflicts
+        get().syncQueue(false);
       },
 
       completeMatch: (matchId, scoreA, scoreB) => {
@@ -490,6 +567,12 @@ export const useMatchStore = create<MatchStoreState>()(
       },
 
       updateMatchLineup: (matchId, teamA, teamB) => {
+        const allIds = [...teamA, ...teamB];
+        if (new Set(allIds).size !== 4 || allIds.some((id) => !id)) {
+          notifyUser('Cannot update lineup: 4 distinct players are required.');
+          return;
+        }
+
         set((state) => ({
           matches: state.matches.map((m) =>
             m.id === matchId
@@ -502,6 +585,8 @@ export const useMatchStore = create<MatchStoreState>()(
               : m
           ),
         }));
+
+        get().syncQueue(true);
       },
 
       swapMatchPlayer: (matchId, oldPlayerId, newPlayerId, markOldAsAway = false) => {
@@ -534,6 +619,8 @@ export const useMatchStore = create<MatchStoreState>()(
               )
             : state.players,
         }));
+
+        get().syncQueue(true);
       },
 
       reassignMatchCourt: (matchId, newCourtName) => {
@@ -542,17 +629,47 @@ export const useMatchStore = create<MatchStoreState>()(
             m.id === matchId ? { ...m, courtName: newCourtName, isManualLineup: true } : m
           ),
         }));
+
+        get().syncQueue(true);
       },
 
       createManualMatch: (courtName, teamA, teamB, startImmediately) => {
-        const { matches } = get();
+        const { matches, players } = get();
+        const allIds = [...teamA, ...teamB];
+
+        if (new Set(allIds).size !== 4 || allIds.some((id) => !id)) {
+          notifyUser('Cannot create match: 4 distinct players are required.');
+          return;
+        }
+
+        const inactivePlayers = allIds.filter((id) => {
+          const p = players.find((pl) => pl.id === id);
+          return !p || !p.isActive;
+        });
+        if (inactivePlayers.length > 0) {
+          notifyUser('Cannot create match: all selected players must be active.');
+          return;
+        }
+
+        const inProgressMatches = matches.filter((m) => m.status === 'IN_PROGRESS');
 
         if (startImmediately) {
-          const isCourtBusy = matches.some(
-            (m) => m.courtName === courtName && m.status === 'IN_PROGRESS'
-          );
+          const isCourtBusy = inProgressMatches.some((m) => m.courtName === courtName);
           if (isCourtBusy) {
-            alert(`${courtName} already has an active match in progress.`);
+            notifyUser(`${courtName} already has an active match in progress.`);
+            return;
+          }
+
+          const busyPlayerIds = new Set<string>();
+          inProgressMatches.forEach((m) => {
+            m.teamA.forEach((id) => busyPlayerIds.add(id));
+            m.teamB.forEach((id) => busyPlayerIds.add(id));
+          });
+
+          const conflictingId = allIds.find((id) => busyPlayerIds.has(id));
+          if (conflictingId) {
+            const conflictName = players.find((p) => p.id === conflictingId)?.name || conflictingId;
+            notifyUser(`Cannot start match: ${conflictName} is already playing on another court.`);
             return;
           }
         }
@@ -568,13 +685,13 @@ export const useMatchStore = create<MatchStoreState>()(
           isManualLineup: true,
         };
 
-        const involvedIds = new Set([...teamA, ...teamB]);
+        const involvedIds = new Set(allIds);
 
         set((state) => {
           // Remove any unstarted auto UPCOMING matches that used these players or targeted this court
           const filteredMatches = state.matches.filter((m) => {
             if (m.status !== 'UPCOMING') return true;
-            if (startImmediately && m.courtName === courtName) return false;
+            if (m.courtName === courtName) return false;
             const hasConflict =
               involvedIds.has(m.teamA[0]) ||
               involvedIds.has(m.teamA[1]) ||

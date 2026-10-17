@@ -136,6 +136,16 @@ export const OnCourtZone: React.FC<OnCourtZoneProps> = ({
   // If 1 court: full width grid-cols-1! If 2 or more: 2 columns on desktop
   const gridColsClass = courts.length === 1 ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2';
 
+  // Calculate off-court bench players available
+  const activePlayingIds = new Set<string>();
+  inProgressMatches.forEach((m) => {
+    m.teamA.forEach((id) => activePlayingIds.add(id));
+    m.teamB.forEach((id) => activePlayingIds.add(id));
+  });
+
+  const activePlayers = Array.from(playersById.values()).filter((p) => p.isActive);
+  const availableBenchCount = activePlayers.filter((p) => !activePlayingIds.has(p.id)).length;
+
   return (
     <section className="space-y-3.5" aria-labelledby="on-court-heading">
       {/* Header */}
@@ -156,6 +166,8 @@ export const OnCourtZone: React.FC<OnCourtZoneProps> = ({
           const match = inProgressMatches.find((m) => m.courtName === court);
 
           if (!match) {
+            const hasEnoughBench = availableBenchCount >= 4;
+
             return (
               <div
                 key={court}
@@ -172,10 +184,17 @@ export const OnCourtZone: React.FC<OnCourtZoneProps> = ({
                       {court}
                     </span>
                   </div>
-                  <span className="text-xs font-bold text-emerald-400 bg-emerald-500/15 px-3 py-1 rounded-full border border-emerald-500/30 inline-flex items-center gap-1.5 shadow-sm">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                    <span>Open Court</span>
-                  </span>
+                  {hasEnoughBench ? (
+                    <span className="text-xs font-bold text-emerald-400 bg-emerald-500/15 px-3 py-1 rounded-full border border-emerald-500/30 inline-flex items-center gap-1.5 shadow-sm">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      <span>Open Court</span>
+                    </span>
+                  ) : (
+                    <span className="text-xs font-bold text-amber-400 bg-amber-500/15 px-3 py-1 rounded-full border border-amber-500/30 inline-flex items-center gap-1.5 shadow-sm">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                      <span>Awaiting Bench ({availableBenchCount}/4)</span>
+                    </span>
+                  )}
                 </div>
 
                 {/* Simulated Court Interior with Net */}
@@ -186,7 +205,7 @@ export const OnCourtZone: React.FC<OnCourtZoneProps> = ({
                       Side A
                     </span>
                     <span className="text-xs font-semibold text-slate-400">
-                      Awaiting Players
+                      {hasEnoughBench ? 'Awaiting Players' : `Need ${4 - availableBenchCount} more`}
                     </span>
                   </div>
 
@@ -206,21 +225,23 @@ export const OnCourtZone: React.FC<OnCourtZoneProps> = ({
                       Side B
                     </span>
                     <span className="text-xs font-semibold text-slate-400">
-                      Awaiting Players
+                      {hasEnoughBench ? 'Awaiting Players' : `Need ${4 - availableBenchCount} more`}
                     </span>
                   </div>
                 </div>
 
                 {/* Direct Action: Put Players on Court */}
                 <Button
-                  variant="primary"
+                  variant={hasEnoughBench ? 'primary' : 'secondary'}
                   size="lg"
                   fullWidth
                   onClick={() => onManualMatch(court)}
                   className="relative z-10 font-bold shadow-lg shadow-emerald-950/40 min-h-[48px] text-sm"
                 >
                   <UserPlus className="w-4 h-4 mr-2" />
-                  Put Players on {court}
+                  {hasEnoughBench
+                    ? `Put Players on ${court}`
+                    : `Put Players on ${court} (${availableBenchCount}/4 off-court)`}
                 </Button>
               </div>
             );

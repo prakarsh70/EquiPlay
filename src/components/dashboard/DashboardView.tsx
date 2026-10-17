@@ -66,6 +66,15 @@ export const DashboardView: React.FC = () => {
     [inProgressMatches]
   );
 
+  const activePlayingPlayerIds = useMemo(() => {
+    const set = new Set<string>();
+    inProgressMatches.forEach((m) => {
+      m.teamA.forEach((id) => set.add(id));
+      m.teamB.forEach((id) => set.add(id));
+    });
+    return set;
+  }, [inProgressMatches]);
+
   const handleEndMatch = (match: Match) => {
     setActiveScoreMatch(match);
   };
@@ -154,6 +163,7 @@ export const DashboardView: React.FC = () => {
               inProgressCourts={inProgressCourts}
               allCourts={config.courtNames}
               playersById={playersById}
+              activePlayingPlayerIds={activePlayingPlayerIds}
               onStartMatch={startMatch}
               onReshuffle={reshuffleUpcoming}
               onEditLineup={(match) => setEditingLineupMatch(match)}
