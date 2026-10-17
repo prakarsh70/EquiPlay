@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { Activity, CalendarDays } from 'lucide-react';
 import { useMatchStore } from '../../store/useMatchStore';
 import { Match, SessionPlayer } from '../../types/equiplay';
 import { Header } from './Header';
@@ -9,8 +10,10 @@ import { ScoreModal } from '../modals/ScoreModal';
 import { EditMatchModal } from '../modals/EditMatchModal';
 import { ConfirmModal } from '../modals/ConfirmModal';
 import { ManualMatchModal } from '../modals/ManualMatchModal';
+import { MatchHistoryView } from '../history/MatchHistoryView';
 
 export const DashboardView: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'COURTS' | 'SCHEDULE'>('COURTS');
   const {
     config,
     players,
@@ -85,43 +88,92 @@ export const DashboardView: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-950 pb-16">
       <Header
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
         onOpenEndSessionConfirm={() => setIsEndSessionConfirmOpen(true)}
         onOpenResetConfirm={() => setIsResetConfirmOpen(true)}
       />
 
-      <main className="max-w-4xl mx-auto px-4 py-6 space-y-8">
-        {/* Zone 1: On Court Now */}
-        <OnCourtZone
-          courts={config.courtNames}
-          inProgressMatches={inProgressMatches}
-          playersById={playersById}
-          onEndMatch={handleEndMatch}
-          onManualMatch={(court) => {
-            setManualMatchTargetCourt(court || config.courtNames[0]);
-            setIsManualMatchOpen(true);
-          }}
-        />
+      <main className="max-w-4xl mx-auto px-4 py-4 sm:py-6 space-y-6">
+        {/* View Toggle Bar: Live Courts vs Schedule & Log */}
+        <div className="flex items-center justify-center">
+          <div className="bg-slate-900/90 p-1 rounded-2xl border border-slate-800 flex items-center gap-1 shadow-lg shadow-black/20">
+            <button
+              type="button"
+              onClick={() => setActiveTab('COURTS')}
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all min-h-[44px] ${
+                activeTab === 'COURTS'
+                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-950/20'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Activity className="w-4 h-4" />
+              <span>Live Courts</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('SCHEDULE')}
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all min-h-[44px] ${
+                activeTab === 'SCHEDULE'
+                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-950/20'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <CalendarDays className="w-4 h-4" />
+              <span>Schedule &amp; Log</span>
+              {matches.filter((m) => m.status === 'COMPLETED').length > 0 && (
+                <span
+                  className={`text-[11px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                    activeTab === 'SCHEDULE'
+                      ? 'bg-slate-950/30 text-slate-950'
+                      : 'bg-slate-800 text-emerald-400'
+                  }`}
+                >
+                  {matches.filter((m) => m.status === 'COMPLETED').length}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
 
-        {/* Zone 2: Up Next Queue */}
-        <UpNextZone
-          upcomingMatches={upcomingMatches}
-          inProgressCourts={inProgressCourts}
-          allCourts={config.courtNames}
-          playersById={playersById}
-          onStartMatch={startMatch}
-          onReshuffle={reshuffleUpcoming}
-          onEditLineup={(match) => setEditingLineupMatch(match)}
-          onReassignCourt={reassignMatchCourt}
-        />
+        {activeTab === 'COURTS' ? (
+          <div className="space-y-8">
+            {/* Zone 1: On Court Now */}
+            <OnCourtZone
+              courts={config.courtNames}
+              inProgressMatches={inProgressMatches}
+              playersById={playersById}
+              onEndMatch={handleEndMatch}
+              onManualMatch={(court) => {
+                setManualMatchTargetCourt(court || config.courtNames[0]);
+                setIsManualMatchOpen(true);
+              }}
+            />
 
-        {/* Zone 3: The Bench & Roster */}
-        <BenchZone
-          players={players}
-          matches={matches}
-          onAddPlayer={addPlayer}
-          onToggleActive={togglePlayerActive}
-          onSetPartner={setPlayerPartner}
-        />
+            {/* Zone 2: Up Next Queue */}
+            <UpNextZone
+              upcomingMatches={upcomingMatches}
+              inProgressCourts={inProgressCourts}
+              allCourts={config.courtNames}
+              playersById={playersById}
+              onStartMatch={startMatch}
+              onReshuffle={reshuffleUpcoming}
+              onEditLineup={(match) => setEditingLineupMatch(match)}
+              onReassignCourt={reassignMatchCourt}
+            />
+
+            {/* Zone 3: The Bench & Roster */}
+            <BenchZone
+              players={players}
+              matches={matches}
+              onAddPlayer={addPlayer}
+              onToggleActive={togglePlayerActive}
+              onSetPartner={setPlayerPartner}
+            />
+          </div>
+        ) : (
+          <MatchHistoryView showBackButton={false} />
+        )}
       </main>
 
       {/* Manual Match: Put Players Directly On Court */}

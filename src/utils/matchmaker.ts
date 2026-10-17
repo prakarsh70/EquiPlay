@@ -138,3 +138,95 @@ export function reshufflePairing(
     };
   }
 }
+
+export interface ProjectedMatch {
+  matchNumber: number;
+  courtName: string;
+  teamA: [string, string];
+  teamB: [string, string];
+  restingPlayerIds: string[];
+  isQueued?: boolean;
+}
+
+/**
+ * Projects future match fixtures based on fair rotation, games played, and teammate links.
+ */
+export function generateProjectedSchedule(
+  players: SessionPlayer[],
+  courtNames: string[],
+  upcomingMatches: { courtName: string; teamA: [string, string]; teamB: [string, string] }[],
+  startIndex = 1,
+  maxProjected = 6
+): ProjectedMatch[] {
+  const activePlayers = players.filter((p) => p.isActive);
+  if (activePlayers.length < 4 || courtNames.length === 0) return [];
+
+  const projected: ProjectedMatch[] = [];
+  let currentMatchNum = startIndex;
+
+  // Clone players to simulate rotation progression
+  const simPlayers: SessionPlayer[] = activePlayers.map((p) => ({ ...p }));
+
+  // Helper to advance simulation counters
+  const advanceCounters = (playedIds: string[]) => {
+    const playedSet = new Set(playedIds);
+    for (const p of simPlayers) {
+      if (playedSet.has(p.id)) {
+        p.gamesPlayedToday += 1;
+        p.consecutiveGamesSatOut = 0;
+      } else {
+        p.consecutiveGamesSatOut += 1;
+      }
+    }
+  };
+
+  // 1. Include existing queued UPCOMING matches first
+  for (const m of upcomingMatches) {
+    const playedIds = [...m.teamA, ...m.teamB];
+    const resting = simPlayers.filter((p) => !playedIds.includes(p.id)).map((p) => p.id);
+
+    projected.push({
+      matchNumber: currentMatchNum++,
+      courtName: m.courtName,
+      teamA: m.teamA,
+      teamB: m.teamB,
+      restingPlayerIds: resting,
+      isQueued: true,
+    });
+
+    advanceCounters(playedIds);
+  }
+
+  // 2. Project future rounds to reach maxProjected
+  let courtIndex = 0;
+  // If upcoming matches exist, start from next court in sequence
+  if (upcomingMatches.length > 0) {
+    const lastCourt = upcomingMatches[upcomingMatches.length - 1].courtName;
+    const lastIdx = courtNames.indexOf(lastCourt);
+    courtIndex = lastIdx !== -1 ? (lastIdx + 1) % courtNames.length : 0;
+  }
+
+  while (projected.length < maxProjected) {
+    const targetCourt = courtNames[courtIndex];
+    const pairings = generateNextMatches(simPlayers, 1);
+    if (pairings.length === 0) break;
+
+    const pairing = pairings[0];
+    const playedIds = [...pairing.teamA, ...pairing.teamB];
+    const resting = simPlayers.filter((p) => !playedIds.includes(p.id)).map((p) => p.id);
+
+    projected.push({
+      matchNumber: currentMatchNum++,
+      courtName: targetCourt,
+      teamA: pairing.teamA,
+      teamB: pairing.teamB,
+      restingPlayerIds: resting,
+      isQueued: false,
+    });
+
+    advanceCounters(playedIds);
+    courtIndex = (courtIndex + 1) % courtNames.length;
+  }
+
+  return projected;
+}

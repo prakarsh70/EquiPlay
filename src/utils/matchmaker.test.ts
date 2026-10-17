@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateNextMatches, reshufflePairing } from './matchmaker';
+import { generateNextMatches, reshufflePairing, generateProjectedSchedule } from './matchmaker';
 import { SessionPlayer } from '../types/equiplay';
 
 describe('Core Matchmaking Algorithm (generateNextMatches)', () => {
@@ -147,6 +147,53 @@ describe('Reshuffle Pairing Utility', () => {
       teamA: ['p0', 'p3'],
       teamB: ['p1', 'p2'],
     });
+  });
+});
+
+describe('Projected Schedule Generator (generateProjectedSchedule)', () => {
+  const createPlayer = (id: string, name: string): SessionPlayer => ({
+    id,
+    name,
+    isActive: true,
+    gamesPlayedToday: 0,
+    consecutiveGamesSatOut: 0,
+    arrivalTime: Date.now(),
+  });
+
+  it('should return empty if less than 4 players', () => {
+    const players = [createPlayer('1', 'P1'), createPlayer('2', 'P2')];
+    expect(generateProjectedSchedule(players, ['Court 1'], [])).toEqual([]);
+  });
+
+  it('should project multiple sequential matches and identify resting players', () => {
+    const players = [
+      createPlayer('1', 'P1'),
+      createPlayer('2', 'P2'),
+      createPlayer('3', 'P3'),
+      createPlayer('4', 'P4'),
+      createPlayer('5', 'P5'),
+      createPlayer('6', 'P6'),
+    ];
+
+    const projected = generateProjectedSchedule(
+      players,
+      ['Court 1'],
+      [],
+      1,
+      4
+    );
+
+    expect(projected).toHaveLength(4);
+    expect(projected[0].matchNumber).toBe(1);
+    expect(projected[0].restingPlayerIds).toHaveLength(2); // 6 players - 4 on court = 2 resting
+    expect(projected[1].matchNumber).toBe(2);
+
+    // Verify all players get turns across 4 projected matches
+    const allPlayed = new Set<string>();
+    projected.forEach((m) => {
+      [...m.teamA, ...m.teamB].forEach((id) => allPlayed.add(id));
+    });
+    expect(allPlayed.size).toBe(6);
   });
 });
 
