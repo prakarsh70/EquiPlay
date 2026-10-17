@@ -1,0 +1,382 @@
+{
+  "version": "1.0.0",
+  "exportDate": "2026-10-17T07:11:03.226Z",
+  "config": {
+    "courtNames": [
+      "court 3"
+    ],
+    "bookingDurationMinutes": 60,
+    "pointFormat": 15,
+    "sessionStartTime": 1792219909523,
+    "sessionEndTime": 1792221023359
+  },
+  "players": [
+    {
+      "id": "194c7ced-4f50-478a-8bce-a8de0d22cb8e",
+      "name": "prakarsh",
+      "isActive": true,
+      "gamesPlayedToday": 8,
+      "consecutiveGamesSatOut": 1,
+      "arrivalTime": 1792220021781
+    },
+    {
+      "id": "d28c0173-e144-4c3a-aab8-4882e65680ec",
+      "name": "pmp",
+      "isActive": true,
+      "gamesPlayedToday": 8,
+      "consecutiveGamesSatOut": 1,
+      "arrivalTime": 1792219885633
+    },
+    {
+      "id": "f4fce8b8-26dc-42e4-a3d5-6b3cb2537531",
+      "name": "shubham",
+      "isActive": true,
+      "gamesPlayedToday": 8,
+      "consecutiveGamesSatOut": 0,
+      "arrivalTime": 1792219889831
+    },
+    {
+      "id": "7f873ccf-5bf7-4fb2-8d63-4c50ae3ccf69",
+      "name": "akshay",
+      "isActive": true,
+      "gamesPlayedToday": 8,
+      "consecutiveGamesSatOut": 0,
+      "arrivalTime": 1792219893519
+    },
+    {
+      "id": "7329f3b7-dd6f-49e9-b237-2a07a9b53d05",
+      "name": "rajeev",
+      "isActive": true,
+      "gamesPlayedToday": 8,
+      "consecutiveGamesSatOut": 0,
+      "arrivalTime": 1792219897166
+    },
+    {
+      "id": "ccfd0204-3712-4cf0-a22d-1d3c5be28c38",
+      "name": "sid",
+      "isActive": true,
+      "gamesPlayedToday": 7,
+      "consecutiveGamesSatOut": 1,
+      "arrivalTime": 1792220040817
+    },
+    {
+      "id": "63a15f9c-f3c0-4243-aa6e-539b7eace1ec",
+      "name": "akash",
+      "isActive": true,
+      "gamesPlayedToday": 1,
+      "consecutiveGamesSatOut": 0,
+      "arrivalTime": 1792220263974
+    }
+  ],
+  "matches": [
+    {
+      "id": "8cb41822-8659-4b4e-ae2a-8d3df2c196ed",
+      "courtName": "court 3",
+      "teamA": [
+        "d28c0173-e144-4c3a-aab8-4882e65680ec",
+        "7329f3b7-dd6f-49e9-b237-2a07a9b53d05"
+      ],
+      "teamB": [
+        "f4fce8b8-26dc-42e4-a3d5-6b3cb2537531",
+        "7f873ccf-5bf7-4fb2-8d63-4c50ae3ccf69"
+      ],
+      "status": "COMPLETED",
+      "syncStatus": "LOCAL",
+      "startTime": 1792219932271,
+      "endTime": 1792219980218,
+      "scoreA": 15,
+      "scoreB": 13
+    },
+    {
+      "id": "51319d8e-f1e0-4ed2-9ecd-6edc849ba0cb",
+      "courtName": "court 3",
+      "teamA": [
+        "d28c0173-e144-4c3a-aab8-4882e65680ec",
+        "7f873ccf-5bf7-4fb2-8d63-4c50ae3ccf69"
+      ],
+      "teamB": [
+        "f4fce8b8-26dc-42e4-a3d5-6b3cb2537531",
+        "7329f3b7-dd6f-49e9-b237-2a07a9b53d05"
+      ],
+      "status": "COMPLETED",
+      "syncStatus": "LOCAL",
+      "startTime": 1792219999688,
+      "endTime": 1792220009818,
+      "scoreA": 13,
+      "scoreB": 15
+    },
+    {
+      "id": "ae032bbf-7947-45a0-8531-9d14443ad4d0",
+      "courtName": "court 3",
+      "teamA": [
+        "d28c0173-e144-4c3a-aab8-4882e65680ec",
+        "7329f3b7-dd6f-49e9-b237-2a07a9b53d05"
+      ],
+      "teamB": [
+        "f4fce8b8-26dc-42e4-a3d5-6b3cb2537531",
+        "7f873ccf-5bf7-4fb2-8d63-4c50ae3ccf69"
+      ],
+      "status": "COMPLETED",
+      "syncStatus": "LOCAL",
+      "startTime": 1792220017385,
+      "endTime": 1792220027584,
+      "scoreA": 15,
+      "scoreB": 13
+    },
+    {
+      "id": "70f9ea4b-7ca6-4cf9-8ac9-859a42cca21f",
+      "courtName": "court 3",
+      "teamA": [
+        "194c7ced-4f50-478a-8bce-a8de0d22cb8e",
+        "7f873ccf-5bf7-4fb2-8d63-4c50ae3ccf69"
+      ],
+      "teamB": [
+        "d28c0173-e144-4c3a-aab8-4882e65680ec",
+        "f4fce8b8-26dc-42e4-a3d5-6b3cb2537531"
+      ],
+      "status": "COMPLETED",
+      "syncStatus": "LOCAL",
+      "startTime": 1792220060070,
+      "endTime": 1792220071050,
+      "scoreA": 13,
+      "scoreB": 15
+    },
+    {
+      "id": "73334da9-a331-4cba-866d-2b2883c650aa",
+      "courtName": "court 3",
+      "teamA": [
+        "ccfd0204-3712-4cf0-a22d-1d3c5be28c38",
+        "d28c0173-e144-4c3a-aab8-4882e65680ec"
+      ],
+      "teamB": [
+        "194c7ced-4f50-478a-8bce-a8de0d22cb8e",
+        "7329f3b7-dd6f-49e9-b237-2a07a9b53d05"
+      ],
+      "status": "COMPLETED",
+      "syncStatus": "LOCAL",
+      "startTime": 1792220104968,
+      "endTime": 1792220111001,
+      "scoreA": 13,
+      "scoreB": 15
+    },
+    {
+      "id": "b1ac48d4-acec-42b6-b854-438a19162550",
+      "courtName": "court 3",
+      "teamA": [
+        "ccfd0204-3712-4cf0-a22d-1d3c5be28c38",
+        "7f873ccf-5bf7-4fb2-8d63-4c50ae3ccf69"
+      ],
+      "teamB": [
+        "194c7ced-4f50-478a-8bce-a8de0d22cb8e",
+        "f4fce8b8-26dc-42e4-a3d5-6b3cb2537531"
+      ],
+      "status": "COMPLETED",
+      "syncStatus": "LOCAL",
+      "startTime": 1792220123499,
+      "endTime": 1792220129589,
+      "scoreA": 13,
+      "scoreB": 15
+    },
+    {
+      "id": "9400e9a5-398e-48b7-8c55-64bdca6e1f72",
+      "courtName": "court 3",
+      "teamA": [
+        "ccfd0204-3712-4cf0-a22d-1d3c5be28c38",
+        "d28c0173-e144-4c3a-aab8-4882e65680ec"
+      ],
+      "teamB": [
+        "194c7ced-4f50-478a-8bce-a8de0d22cb8e",
+        "7329f3b7-dd6f-49e9-b237-2a07a9b53d05"
+      ],
+      "status": "COMPLETED",
+      "syncStatus": "LOCAL",
+      "startTime": 1792220142521,
+      "endTime": 1792220148568,
+      "scoreA": 13,
+      "scoreB": 15
+    },
+    {
+      "id": "43611b8c-4f9d-4475-8168-d80c5eafd458",
+      "courtName": "court 3",
+      "teamA": [
+        "ccfd0204-3712-4cf0-a22d-1d3c5be28c38",
+        "7f873ccf-5bf7-4fb2-8d63-4c50ae3ccf69"
+      ],
+      "teamB": [
+        "194c7ced-4f50-478a-8bce-a8de0d22cb8e",
+        "f4fce8b8-26dc-42e4-a3d5-6b3cb2537531"
+      ],
+      "status": "COMPLETED",
+      "syncStatus": "LOCAL",
+      "startTime": 1792220157603,
+      "endTime": 1792220168788,
+      "scoreA": 13,
+      "scoreB": 15
+    },
+    {
+      "id": "9ff15b59-2b5b-430d-906f-d031fa9116fb",
+      "courtName": "court 3",
+      "teamA": [
+        "ccfd0204-3712-4cf0-a22d-1d3c5be28c38",
+        "d28c0173-e144-4c3a-aab8-4882e65680ec"
+      ],
+      "teamB": [
+        "7329f3b7-dd6f-49e9-b237-2a07a9b53d05",
+        "194c7ced-4f50-478a-8bce-a8de0d22cb8e"
+      ],
+      "status": "COMPLETED",
+      "syncStatus": "LOCAL",
+      "startTime": 1792220180869,
+      "endTime": 1792220186731,
+      "scoreA": 13,
+      "scoreB": 15
+    },
+    {
+      "id": "dcd9a6f5-d256-43e4-b12c-2d33227c0577",
+      "courtName": "court 3",
+      "teamA": [
+        "ccfd0204-3712-4cf0-a22d-1d3c5be28c38",
+        "194c7ced-4f50-478a-8bce-a8de0d22cb8e"
+      ],
+      "teamB": [
+        "f4fce8b8-26dc-42e4-a3d5-6b3cb2537531",
+        "7f873ccf-5bf7-4fb2-8d63-4c50ae3ccf69"
+      ],
+      "status": "COMPLETED",
+      "syncStatus": "LOCAL",
+      "startTime": 1792220205785,
+      "endTime": 1792220208452,
+      "scoreA": 15,
+      "scoreB": 13
+    },
+    {
+      "id": "55468280-6244-403c-94a5-42b6e24f6b27",
+      "courtName": "court 3",
+      "teamA": [
+        "7329f3b7-dd6f-49e9-b237-2a07a9b53d05",
+        "d28c0173-e144-4c3a-aab8-4882e65680ec"
+      ],
+      "teamB": [
+        "ccfd0204-3712-4cf0-a22d-1d3c5be28c38",
+        "194c7ced-4f50-478a-8bce-a8de0d22cb8e"
+      ],
+      "status": "COMPLETED",
+      "syncStatus": "LOCAL",
+      "startTime": 1792220289144,
+      "endTime": 1792220295956,
+      "scoreA": 15,
+      "scoreB": 13
+    },
+    {
+      "id": "10131301-d43a-4a75-b381-15603f9d5900",
+      "courtName": "court 3",
+      "teamA": [
+        "63a15f9c-f3c0-4243-aa6e-539b7eace1ec",
+        "7329f3b7-dd6f-49e9-b237-2a07a9b53d05"
+      ],
+      "teamB": [
+        "f4fce8b8-26dc-42e4-a3d5-6b3cb2537531",
+        "7f873ccf-5bf7-4fb2-8d63-4c50ae3ccf69"
+      ],
+      "status": "COMPLETED",
+      "syncStatus": "LOCAL",
+      "startTime": 1792220298820,
+      "endTime": 1792220308607,
+      "scoreA": 13,
+      "scoreB": 15
+    },
+    {
+      "id": "68ac9bcf-dd10-4126-89d3-39ab991c7ba9",
+      "courtName": "court 3",
+      "teamA": [
+        "63a15f9c-f3c0-4243-aa6e-539b7eace1ec",
+        "d28c0173-e144-4c3a-aab8-4882e65680ec"
+      ],
+      "teamB": [
+        "ccfd0204-3712-4cf0-a22d-1d3c5be28c38",
+        "194c7ced-4f50-478a-8bce-a8de0d22cb8e"
+      ],
+      "status": "UPCOMING",
+      "syncStatus": "LOCAL"
+    }
+  ],
+  "stats": [
+    {
+      "id": "7329f3b7-dd6f-49e9-b237-2a07a9b53d05",
+      "name": "rajeev",
+      "gamesPlayed": 8,
+      "wins": 7,
+      "losses": 1,
+      "winRate": 88,
+      "pointsScored": 118,
+      "pointsConceded": 106,
+      "pointDifferential": 12
+    },
+    {
+      "id": "194c7ced-4f50-478a-8bce-a8de0d22cb8e",
+      "name": "prakarsh",
+      "gamesPlayed": 8,
+      "wins": 6,
+      "losses": 2,
+      "winRate": 75,
+      "pointsScored": 116,
+      "pointsConceded": 108,
+      "pointDifferential": 8
+    },
+    {
+      "id": "f4fce8b8-26dc-42e4-a3d5-6b3cb2537531",
+      "name": "shubham",
+      "gamesPlayed": 8,
+      "wins": 5,
+      "losses": 3,
+      "winRate": 63,
+      "pointsScored": 114,
+      "pointsConceded": 110,
+      "pointDifferential": 4
+    },
+    {
+      "id": "d28c0173-e144-4c3a-aab8-4882e65680ec",
+      "name": "pmp",
+      "gamesPlayed": 8,
+      "wins": 4,
+      "losses": 4,
+      "winRate": 50,
+      "pointsScored": 112,
+      "pointsConceded": 112,
+      "pointDifferential": 0
+    },
+    {
+      "id": "ccfd0204-3712-4cf0-a22d-1d3c5be28c38",
+      "name": "sid",
+      "gamesPlayed": 7,
+      "wins": 1,
+      "losses": 6,
+      "winRate": 14,
+      "pointsScored": 93,
+      "pointsConceded": 103,
+      "pointDifferential": -10
+    },
+    {
+      "id": "7f873ccf-5bf7-4fb2-8d63-4c50ae3ccf69",
+      "name": "akshay",
+      "gamesPlayed": 8,
+      "wins": 1,
+      "losses": 7,
+      "winRate": 13,
+      "pointsScored": 106,
+      "pointsConceded": 118,
+      "pointDifferential": -12
+    },
+    {
+      "id": "63a15f9c-f3c0-4243-aa6e-539b7eace1ec",
+      "name": "akash",
+      "gamesPlayed": 1,
+      "wins": 0,
+      "losses": 1,
+      "winRate": 0,
+      "pointsScored": 13,
+      "pointsConceded": 15,
+      "pointDifferential": -2
+    }
+  ]
+}
