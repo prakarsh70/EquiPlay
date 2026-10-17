@@ -88,8 +88,6 @@ export const DashboardView: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-950 pb-16">
       <Header
-        activeTab={activeTab}
-        onSelectTab={setActiveTab}
         onOpenEndSessionConfirm={() => setIsEndSessionConfirmOpen(true)}
         onOpenResetConfirm={() => setIsResetConfirmOpen(true)}
       />
