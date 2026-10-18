@@ -182,6 +182,41 @@ npm run preview
 
 ---
 
+## 🗺️ Future Scope & Roadmap
+
+EquiPlay is designed to evolve into a full-fledged club and tournament operations suite. Upcoming initiatives on the roadmap include:
+
+### 1. 📈 Dynamic Skill Balancing & Elo Engine (Glicko-2 / TrueSkill)
+- Incorporate skill-tier weighting (Beginner, Intermediate, Advanced) into the combinatorial optimizer.
+- Add Glicko-2 / TrueSkill rating calculations based on match margins to balance doubles pairs fairly while keeping partner diversity high.
+- Introduce **King of the Court** mode (winners move up a court, losers move down).
+
+### 2. 📺 Court-Side Spectator / TV Kiosk Mode
+- Dedicated fullscreen display mode optimized for wall-mounted gym monitors or projectors.
+- Real-time court countdown timers, live scores, upcoming queue callouts, and session leaderboard.
+- QR code on screen allowing players to scan and see their personalized queue position on their own phones.
+
+### 3. 🔄 Real-Time Multi-Device Sync (P2P / CRDTs)
+- Peer-to-peer local synchronization using WebRTC or CRDTs (Yjs / Automerge) over local Wi-Fi.
+- Enables court referees or multiple court managers to log scores simultaneously from different phones without requiring an internet connection.
+
+### 4. 🗣️ Audio Umpire (Text-to-Speech Court Callouts)
+- Web Speech API integration to automatically vocalize queue announcements when matches are generated:
+  > *"Court 2: Sarah and Alex vs. Ken and Maya. Please take the court."*
+- Audible countdown chimes when match timers hit the 2-minute and final buzzer marks.
+
+### 5. 🏆 Tournament & League Formats
+- Extend beyond recreational open sessions into structured competition:
+  - Swiss System tournament generator.
+  - Round Robin pools with automatic tie-break resolution.
+  - Single/Double elimination brackets with seeding based on social session stats.
+
+### 6. 📤 Social Sharing & WhatsApp Summary Generator
+- One-click export of session highlights into clean shareable images formatted for WhatsApp and Instagram stories.
+- Session summary reports (CSV/JSON export, Total Court Utilization %, Most Active Player, Longest Rally, Session MVP).
+
+---
+
 ## 🤝 Contributing Workflow
 
 We use a feature-branch workflow with Pull Requests:
@@ -215,3 +250,4 @@ This project is licensed under the [ISC License](LICENSE).
 <p align="center">
   Built with 🏸 by badminton players, for badminton players.
 </p>
+
