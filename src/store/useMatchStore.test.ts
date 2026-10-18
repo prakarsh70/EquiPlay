@@ -365,4 +365,59 @@ describe('useMatchStore State & Transitions', () => {
     // Should not add match
     expect(useMatchStore.getState().matches.length).toBe(initialMatchCount);
   });
+
+  it('end-to-end: automatically shuffles teams and courts for 8 players across 2 courts after matches complete', () => {
+    const store = useMatchStore.getState();
+    store.setCourts(['Court 1', 'Court 2']);
+
+    ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].forEach((name) => {
+      store.addPlayer(name, true);
+    });
+
+    store.startSession();
+
+    // Round 1 matches
+    const r1Matches = useMatchStore.getState().matches.filter((m) => m.status === 'UPCOMING');
+    expect(r1Matches).toHaveLength(2);
+
+    const r1Court1 = r1Matches.find((m) => m.courtName === 'Court 1')!;
+    const r1Court2 = r1Matches.find((m) => m.courtName === 'Court 2')!;
+
+    // Start both matches
+    store.startMatch(r1Court1.id);
+    store.startMatch(r1Court2.id);
+
+    // Complete both matches
+    store.completeMatch(r1Court1.id, 15, 11);
+    store.completeMatch(r1Court2.id, 15, 13);
+
+    // Round 2 matches should now be queued
+    const r2Matches = useMatchStore.getState().matches.filter((m) => m.status === 'UPCOMING');
+    expect(r2Matches).toHaveLength(2);
+
+    const r2Court1 = r2Matches.find((m) => m.courtName === 'Court 1')!;
+    const r2Court2 = r2Matches.find((m) => m.courtName === 'Court 2')!;
+
+    const r1C1Players = new Set([...r1Court1.teamA, ...r1Court1.teamB]);
+    const r2C1Players = new Set([...r2Court1.teamA, ...r2Court1.teamB]);
+
+    // Court 1 should NOT have the exact same 4 players in Round 2
+    const isIdentical = [...r2C1Players].every((id) => r1C1Players.has(id));
+    expect(isIdentical).toBe(false);
+
+    // Partner pairs should NOT repeat
+    const r1Partners = [
+      new Set(r1Court1.teamA),
+      new Set(r1Court1.teamB),
+      new Set(r1Court2.teamA),
+      new Set(r1Court2.teamB),
+    ];
+    const isR1Partner = (id1: string, id2: string) =>
+      r1Partners.some((p) => p.has(id1) && p.has(id2));
+
+    expect(isR1Partner(r2Court1.teamA[0], r2Court1.teamA[1])).toBe(false);
+    expect(isR1Partner(r2Court1.teamB[0], r2Court1.teamB[1])).toBe(false);
+    expect(isR1Partner(r2Court2.teamA[0], r2Court2.teamA[1])).toBe(false);
+    expect(isR1Partner(r2Court2.teamB[0], r2Court2.teamB[1])).toBe(false);
+  });
 });

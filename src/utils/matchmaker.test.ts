@@ -121,6 +121,95 @@ describe('Core Matchmaking Algorithm (generateNextMatches)', () => {
 
     expect(areP1P2Together).toBe(true);
   });
+
+  it('should shuffle teams and courts for 8 players across 2 courts in consecutive rounds', () => {
+    const players: SessionPlayer[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map((id) =>
+      createPlayer(id, 0, 0, true)
+    );
+    const targetCourts = ['Court 1', 'Court 2'];
+
+    // Round 1
+    const round1 = generateNextMatches(players, 2, [], [], targetCourts);
+    expect(round1).toHaveLength(2);
+
+    const r1Court1Match = round1[0];
+    const r1Court2Match = round1[1];
+
+    const r1Court1Players = [...r1Court1Match.teamA, ...r1Court1Match.teamB];
+    const r1Court2Players = [...r1Court2Match.teamA, ...r1Court2Match.teamB];
+
+    // Simulate Round 1 completion: all 8 players now have 1 game played
+    const playersAfterR1 = players.map((p) => ({
+      ...p,
+      gamesPlayedToday: 1,
+      consecutiveGamesSatOut: 0,
+    }));
+
+    const round1History = [
+      { courtName: 'Court 1', teamA: r1Court1Match.teamA, teamB: r1Court1Match.teamB },
+      { courtName: 'Court 2', teamA: r1Court2Match.teamA, teamB: r1Court2Match.teamB },
+    ];
+
+    // Generate Round 2 with Round 1 history
+    const round2 = generateNextMatches(playersAfterR1, 2, [], round1History, targetCourts);
+    expect(round2).toHaveLength(2);
+
+    const r2Court1Match = round2[0];
+    const r2Court2Match = round2[1];
+
+    const r2Court1Players = [...r2Court1Match.teamA, ...r2Court1Match.teamB];
+    const r2Court2Players = [...r2Court2Match.teamA, ...r2Court2Match.teamB];
+
+    // 1. Shuffled between Courts: Neither Court 1 nor Court 2 should have the exact same 4 players as Round 1!
+    const r1C1Set = new Set(r1Court1Players);
+    const r2C1Set = new Set(r2Court1Players);
+    const isIdenticalCourt1 = [...r2C1Set].every((id) => r1C1Set.has(id));
+    expect(isIdenticalCourt1).toBe(false);
+
+    const r1C2Set = new Set(r1Court2Players);
+    const r2C2Set = new Set(r2Court2Players);
+    const isIdenticalCourt2 = [...r2C2Set].every((id) => r1C2Set.has(id));
+    expect(isIdenticalCourt2).toBe(false);
+
+    // 2. Shuffled between Teams: partners in Round 2 must NOT repeat Round 1 partners
+    const r1PartnerPairs = [
+      new Set(r1Court1Match.teamA),
+      new Set(r1Court1Match.teamB),
+      new Set(r1Court2Match.teamA),
+      new Set(r1Court2Match.teamB),
+    ];
+
+    const isR1PartnerPair = (p1: string, p2: string) =>
+      r1PartnerPairs.some((pair) => pair.has(p1) && pair.has(p2));
+
+    expect(isR1PartnerPair(r2Court1Match.teamA[0], r2Court1Match.teamA[1])).toBe(false);
+    expect(isR1PartnerPair(r2Court1Match.teamB[0], r2Court1Match.teamB[1])).toBe(false);
+    expect(isR1PartnerPair(r2Court2Match.teamA[0], r2Court2Match.teamA[1])).toBe(false);
+    expect(isR1PartnerPair(r2Court2Match.teamB[0], r2Court2Match.teamB[1])).toBe(false);
+  });
+
+  it('should shuffle doubles teams on 1 court for 4 players across consecutive rounds', () => {
+    const players: SessionPlayer[] = ['A', 'B', 'C', 'D'].map((id) =>
+      createPlayer(id, 0, 0, true)
+    );
+
+    // Round 1: [A, D] vs [B, C]
+    const r1 = generateNextMatches(players, 1, [], [], ['Court 1']);
+    expect(r1).toHaveLength(1);
+
+    const r1History = [{ courtName: 'Court 1', teamA: r1[0].teamA, teamB: r1[0].teamB }];
+    const playersAfterR1 = players.map((p) => ({ ...p, gamesPlayedToday: 1 }));
+
+    // Round 2
+    const r2 = generateNextMatches(playersAfterR1, 1, [], r1History, ['Court 1']);
+    expect(r2).toHaveLength(1);
+
+    // Team pairings in Round 2 must NOT be the same as Round 1!
+    const r1TeamASet = new Set(r1[0].teamA);
+    const r2TeamASet = new Set(r2[0].teamA);
+    const sameTeamA = [...r1TeamASet].every((id) => r2TeamASet.has(id));
+    expect(sameTeamA).toBe(false);
+  });
 });
 
 describe('Reshuffle Pairing Utility', () => {

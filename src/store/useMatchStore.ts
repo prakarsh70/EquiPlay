@@ -385,7 +385,16 @@ export const useMatchStore = create<MatchStoreState>()(
         const targetCourts = courtsNeedingUpcoming.slice(0, matchesToGenerate);
 
         const busyList = Array.from(lockedPlayerIds);
-        const pairings = generateNextMatches(players, matchesToGenerate, busyList);
+        const pastMatches = matches.filter(
+          (m) => m.status === 'COMPLETED' || m.status === 'IN_PROGRESS'
+        );
+        const pairings = generateNextMatches(
+          players,
+          matchesToGenerate,
+          busyList,
+          pastMatches,
+          targetCourts
+        );
 
         if (pairings.length === 0) {
           if (keptMatches.length !== matches.length) {
@@ -396,7 +405,7 @@ export const useMatchStore = create<MatchStoreState>()(
 
         const newMatches: Match[] = pairings.map((pairing, idx) => ({
           id: crypto.randomUUID(),
-          courtName: targetCourts[idx],
+          courtName: pairing.courtName || targetCourts[idx],
           teamA: pairing.teamA,
           teamB: pairing.teamB,
           status: 'UPCOMING',

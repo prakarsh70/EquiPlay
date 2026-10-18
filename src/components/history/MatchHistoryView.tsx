@@ -52,6 +52,11 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
   // Calculate projected upcoming matches (ChatGPT style)
   const projectedSchedule = useMemo(() => {
     const startIndex = completedMatches.length + inProgressMatches.length + 1;
+    const historyEntries = [...completedMatches, ...inProgressMatches].map((m) => ({
+      courtName: m.courtName,
+      teamA: m.teamA,
+      teamB: m.teamB,
+    }));
     return generateProjectedSchedule(
       players,
       config.courtNames,
@@ -61,9 +66,10 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
         teamB: m.teamB,
       })),
       startIndex,
-      Math.max(6, upcomingMatches.length + 4)
+      Math.max(6, upcomingMatches.length + 4),
+      historyEntries
     );
-  }, [players, config.courtNames, upcomingMatches, completedMatches.length, inProgressMatches.length]);
+  }, [players, config.courtNames, upcomingMatches, completedMatches, inProgressMatches]);
 
   const handleCopySummary = () => {
     let summaryText = `🏸 EquiPlay Session Schedule & Summary\n`;
