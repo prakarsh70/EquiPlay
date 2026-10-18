@@ -182,38 +182,28 @@ npm run preview
 
 ---
 
-## 🗺️ Future Scope & Roadmap
+## 🚀 Future Scope & Product Roadmap (Post-MVP)
 
-EquiPlay is designed to evolve into a full-fledged club and tournament operations suite. Upcoming initiatives on the roadmap include:
+While **Phase 1 (Local Offline MVP)** solves immediate courtside rotation and matchmaking using an offline-first architecture (`Zustand` + `localStorage`), **EquiPlay** is architected to scale into a full-featured, cloud-synced multi-sport platform.
 
-### 1. 📈 Dynamic Skill Balancing & Elo Engine (Glicko-2 / TrueSkill)
-- Incorporate skill-tier weighting (Beginner, Intermediate, Advanced) into the combinatorial optimizer.
-- Add Glicko-2 / TrueSkill rating calculations based on match margins to balance doubles pairs fairly while keeping partner diversity high.
-- Introduce **King of the Court** mode (winners move up a court, losers move down).
+### Phase 2: Offline-to-Cloud Synchronization & Multi-Device Live View
+* **Zero-Data-Loss Cloud Migration:** Leverage the MVP's UUID entity generation (`crypto.randomUUID()`) and `syncStatus` state flag (`'LOCAL' | 'PENDING' | 'SYNCED'`) to batch-upload historical local matches to a **Firebase / Supabase** backend without ID collisions or lost session history.
+* **Real-Time Multi-Device Sync:** Allow one player to host the session while the rest of the group scans a **Live Session QR Code** to view the "On Court" and "Up Next" queues updating in real time on their own phones.
+* **Lightweight Group Authentication:** Introduce simple session passcodes or social sign-in so recurring groups can load their saved player rosters in one tap.
 
-### 2. 📺 Court-Side Spectator / TV Kiosk Mode
-- Dedicated fullscreen display mode optimized for wall-mounted gym monitors or projectors.
-- Real-time court countdown timers, live scores, upcoming queue callouts, and session leaderboard.
-- QR code on screen allowing players to scan and see their personalized queue position on their own phones.
+### Phase 3: Advanced Matchmaking Engine Upgrades
+* **Dynamic Fixed-Team Overrides:** Allow players practicing for tournaments to lock in a fixed partner (`fixedTeams: [[PlayerA, PlayerB]]`) either at setup or mid-session, while still enforcing fair court-time rotation against the rest of the group.
+* **Partnership & Opponent Variety Matrix:** Upgrade the core sorting algorithm into a multi-variable constraint solver that tracks a `partnershipMatrix` and `opponentMatrix`—penalizing repeated pairings so everyone plays *with* and *against* everyone equally when shuffling.
+* **Dynamic Time-Capacity Feedback Loop ("Time-Panic Mode"):** Calculate a moving average of actual match durations (`endTime - startTime`) against the remaining booking clock. In the final 20 minutes of a court booking, automatically shift algorithmic weights from *Partnership Variety* to strict *Games Played Equity*—and suggest switching from 21-point to 15-point or 11-point formats if time is running tight.
 
-### 3. 🔄 Real-Time Multi-Device Sync (P2P / CRDTs)
-- Peer-to-peer local synchronization using WebRTC or CRDTs (Yjs / Automerge) over local Wi-Fi.
-- Enables court referees or multiple court managers to log scores simultaneously from different phones without requiring an internet connection.
+### Phase 4: Historical Analytics & Gamification (`RTK Query` / `TanStack Query`)
+* **Hybrid State Architecture:** Pair **Zustand** (for synchronous client/UI state) with **RTK Query / TanStack Query** (for server-state caching, background fetching, and optimistic updates).
+* **Player Performance & Synergy Dashboards:** Derive lifetime, monthly, and weekly stats directly from immutable `Match` records—including Win/Loss ratios, Point Differentials, **Best Partner Synergy** (highest win rate together), and **Nemesis Tracking** (toughest opponents).
+* **Attendance & Punctuality Leaderboards:** Utilize the `arrivalTime` timestamp logged when a player toggles from `Away` to `Active` to calculate court-time utilization and award playful community badges (e.g., the *"Always Late"* badge vs. *"Early Bird"*).
+* **Court & Venue Insights:** Track historical win rates and match pacing across specific courts (e.g., *Court 3* vs. *Court 4*).
 
-### 4. 🗣️ Audio Umpire (Text-to-Speech Court Callouts)
-- Web Speech API integration to automatically vocalize queue announcements when matches are generated:
-  > *"Court 2: Sarah and Alex vs. Ken and Maya. Please take the court."*
-- Audible countdown chimes when match timers hit the 2-minute and final buzzer marks.
-
-### 5. 🏆 Tournament & League Formats
-- Extend beyond recreational open sessions into structured competition:
-  - Swiss System tournament generator.
-  - Round Robin pools with automatic tie-break resolution.
-  - Single/Double elimination brackets with seeding based on social session stats.
-
-### 6. 📤 Social Sharing & WhatsApp Summary Generator
-- One-click export of session highlights into clean shareable images formatted for WhatsApp and Instagram stories.
-- Session summary reports (CSV/JSON export, Total Court Utilization %, Most Active Player, Longest Rally, Session MVP).
+### Phase 5: Multi-Sport Expansion
+* **Configurable Sport Presets:** Abstract the scoring and court-capacity rules (`playersPerCourt`, `pointFormat`) to support **Pickleball, Padel, Tennis, Table Tennis, and Half-Court Basketball**.
 
 ---
 
