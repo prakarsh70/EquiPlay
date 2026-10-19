@@ -182,28 +182,39 @@ npm run preview
 
 ---
 
-## 🚀 Future Scope & Product Roadmap (Post-MVP)
+## 🚀 Product Roadmap & Architectural Phases
 
-While **Phase 1 (Local Offline MVP)** solves immediate courtside rotation and matchmaking using an offline-first architecture (`Zustand` + `localStorage`), **EquiPlay** is architected to scale into a full-featured, cloud-synced multi-sport platform.
+EquiPlay follows a strict phased architecture designed to isolate client-side matchmaking and competitive engines before introducing server synchronization.
 
-### Phase 2: Offline-to-Cloud Synchronization & Multi-Device Live View
-* **Zero-Data-Loss Cloud Migration:** Leverage the MVP's UUID entity generation (`crypto.randomUUID()`) and `syncStatus` state flag (`'LOCAL' | 'PENDING' | 'SYNCED'`) to batch-upload historical local matches to a **Firebase / Supabase** backend without ID collisions or lost session history.
-* **Real-Time Multi-Device Sync:** Allow one player to host the session while the rest of the group scans a **Live Session QR Code** to view the "On Court" and "Up Next" queues updating in real time on their own phones.
-* **Lightweight Group Authentication:** Introduce simple session passcodes or social sign-in so recurring groups can load their saved player rosters in one tap.
+### Phase 1: Daily Court Rotation & Session Management (Local MVP) — [COMPLETED / IN PROGRESS]
+* **Client-Only Architecture:** 100% offline-first Progressive Web App built with React, TypeScript, Tailwind CSS, and Zustand (`persist` middleware to `localStorage` under `'equiplay-session-storage'`).
+* **Courtside Heuristic Matchmaker:** Pure mathematical selection balancing `gamesPlayedToday` (equity) with `consecutiveGamesSatOut` (bench idle penalty) and snake-draft pairings.
+* **Live Courtside Utility:** Multi-court active queues, arrival time stamps (`arrivalTime`) for late walk-ins, and high-contrast, glare-resistant dark mode.
 
-### Phase 3: Advanced Matchmaking Engine Upgrades
-* **Dynamic Fixed-Team Overrides:** Allow players practicing for tournaments to lock in a fixed partner (`fixedTeams: [[PlayerA, PlayerB]]`) either at setup or mid-session, while still enforcing fair court-time rotation against the rest of the group.
-* **Partnership & Opponent Variety Matrix:** Upgrade the core sorting algorithm into a multi-variable constraint solver that tracks a `partnershipMatrix` and `opponentMatrix`—penalizing repeated pairings so everyone plays *with* and *against* everyone equally when shuffling.
-* **Dynamic Time-Capacity Feedback Loop ("Time-Panic Mode"):** Calculate a moving average of actual match durations (`endTime - startTime`) against the remaining booking clock. In the final 20 minutes of a court booking, automatically shift algorithmic weights from *Partnership Variety* to strict *Games Played Equity*—and suggest switching from 21-point to 15-point or 11-point formats if time is running tight.
+### Phase 2: Offline Tournament Arena & Competition Formats — [CURRENT EXECUTION]
+* **Dual-Mode Application Hub:** Root-level mode router cleanly separating "Daily Court Rotation" from "Tournament Mode" with zero state leakage.
+* **Isolated State Architecture:** Independent Zustand store persisted under `'equiplay-tournament-storage'`, ensuring daily casual sessions and high-stakes tournament brackets never mutate each other.
+* **Multi-Format Tournament Engine:**
+  * **World Cup Format (Group Stage to Single Elimination):** Deterministic round-robin pool fixtures for 8 groups (A–H) of 4 teams (48 matches), auto-calculating live standings (Points, Wins, Head-to-Head, Point Differential $\Delta$).
+  * **Automated Knockout Progression:** Seeded bracket populating Top-2 qualifiers from each pool into Round of 16 $\rightarrow$ Quarterfinals $\rightarrow$ Semifinals $\rightarrow$ Finals.
+  * **Pure Round Robin & Single Elimination:** Configurable quick draws for smaller 4–8 team single-pool events.
+* **Pre-Seeded 32-Team Roster:** Out-of-the-box support for the annual October 24 badminton doubles championship with instant courtside match dispatching.
 
-### Phase 4: Historical Analytics & Gamification (`RTK Query` / `TanStack Query`)
-* **Hybrid State Architecture:** Pair **Zustand** (for synchronous client/UI state) with **RTK Query / TanStack Query** (for server-state caching, background fetching, and optimistic updates).
-* **Player Performance & Synergy Dashboards:** Derive lifetime, monthly, and weekly stats directly from immutable `Match` records—including Win/Loss ratios, Point Differentials, **Best Partner Synergy** (highest win rate together), and **Nemesis Tracking** (toughest opponents).
-* **Attendance & Punctuality Leaderboards:** Utilize the `arrivalTime` timestamp logged when a player toggles from `Away` to `Active` to calculate court-time utilization and award playful community badges (e.g., the *"Always Late"* badge vs. *"Early Bird"*).
-* **Court & Venue Insights:** Track historical win rates and match pacing across specific courts (e.g., *Court 3* vs. *Court 4*).
+### Phase 3: Offline-to-Cloud Synchronization & Multi-Device Live View
+* **Zero-Data-Loss Migration:** Batch-sync local `Match` and `TournamentMatch` records (`syncStatus === 'LOCAL'`) to a Firebase/Supabase backend using native collision-free UUIDs (`crypto.randomUUID()`).
+* **Spectator Live-View:** Read-only QR code display letting players in the arena check court allocations and pool standings directly from their personal phones.
+* **Group Cloud Tenancy:** Persistent group codes to recall recurring club rosters and team doubles pairs.
 
-### Phase 5: Multi-Sport Expansion
-* **Configurable Sport Presets:** Abstract the scoring and court-capacity rules (`playersPerCourt`, `pointFormat`) to support **Pickleball, Padel, Tennis, Table Tennis, and Half-Court Basketball**.
+### Phase 4: Advanced Matchmaking Engine Upgrades
+* **Constraint-Based Pairing Matrix:** Replace basic snake drafting with a multidimensional partnership and opponent variety matrix to avoid back-to-back duplicate pairings.
+* **Time-Panic Feedback Loop:** Dynamic pacing engine comparing elapsed match durations against booking clock limits, automatically adjusting game point formats (21 $\rightarrow$ 15 $\rightarrow$ 11) in the final 30 minutes of a court booking.
+
+### Phase 5: Historical Analytics & Gamification (`RTK Query` / `TanStack Query`)
+* **Hybrid Client/Server State:** Integrate TanStack Query / RTK Query alongside Zustand for background data revalidation and server-side cache management.
+* **Lifetime Synergy Dashboards:** Player stats, partner win rates, nemesis tracking, and attendance badges (e.g., "Early Bird" vs. "Always Late").
+
+### Phase 6: Multi-Sport Scaling
+* **Universal Racket Engine:** Abstract court capacity, scoring caps, and deuce rules to support Pickleball, Padel, Tennis, Table Tennis, and Half-Court Basketball.
 
 ---
 
