@@ -36,7 +36,7 @@ export const PointFormatSelector: React.FC = () => {
                   : 'bg-slate-800/60 border-slate-800 hover:border-slate-700'
               }`}
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between gap-4">
                 <span
                   className={`text-lg font-black tracking-tight ${
                     isSelected ? 'text-emerald-400' : 'text-slate-200'
@@ -45,14 +45,14 @@ export const PointFormatSelector: React.FC = () => {
                   {title}
                 </span>
                 <span
-                  className={`w-3 h-3 rounded-full border-2 ${
+                  className={`w-4 h-4 shrink-0 rounded-full border-2 transition-all mt-1 ${
                     isSelected
-                      ? 'border-emerald-400 bg-emerald-400'
+                      ? 'border-emerald-400 bg-emerald-400 ring-4 ring-emerald-400/20'
                       : 'border-slate-600 bg-transparent'
                   }`}
                 />
               </div>
-              <p className="text-xs text-slate-400 mt-2">{desc}</p>
+              <p className="text-xs text-slate-400 mt-2 leading-relaxed">{desc}</p>
             </button>
           );
         })}
