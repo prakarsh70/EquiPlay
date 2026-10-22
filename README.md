@@ -4,7 +4,7 @@
 > Engineered to eliminate wait-time disputes, repeat matchups, and court chaos in club socials and competitive badminton tournaments.
 
 [![Live Demo](https://img.shields.io/badge/Demo-equi--play.vercel.app-10b981?style=for-the-badge&logo=vercel&logoColor=white)](https://equi-play.vercel.app/)
-[![Tests](https://img.shields.io/badge/Tests-50%20Passing-emerald?style=for-the-badge&logo=vitest&logoColor=white)](https://github.com/prakarsh70/EquiPlay)
+[![Tests](https://img.shields.io/badge/Tests-57%20Passing-emerald?style=for-the-badge&logo=vitest&logoColor=white)](https://github.com/prakarsh70/EquiPlay)
 [![TypeScript](https://img.shields.io/badge/TypeScript-7.0-3178c6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19.3-61dafb?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4.3-38bdf8?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
@@ -97,7 +97,7 @@ flowchart TD
     TournStore <--> AdminUI
     TournStore --> SyncService
     SyncService --> SpectatorUI
-    SyncService <..> Supabase
+    SyncService <-.-> Supabase
 ```
 
 ---
@@ -131,7 +131,7 @@ flowchart TD
 | **Tailwind CSS v4** | Modern theme styling, utility-first UI design system |
 | **Zustand 5** | Isolated state stores (`useMatchStore` & `useTournamentStore`) |
 | **qrcode.react** | High-contrast courtside QR code generation |
-| **Vitest 5** | Comprehensive test suite (**50 passing unit and integration tests**) |
+| **Vitest 5** | Comprehensive test suite (**57 passing unit and integration tests**) |
 | **Vite 8** | Sub-millisecond HMR, multi-host local networking (`server.host: true`) |
 | **Vite PWA Plugin** | Service worker lifecycle, web app manifest, 100% offline caching |
 | **Supabase REST** | Zero-dependency cloud database synchronization for mobile spectators |
@@ -189,7 +189,7 @@ To allow players on cellular 4G/5G outside local Wi-Fi to receive live spectator
 4. Restart Vite (`npm run dev`).
 
 ### 5. Run Test Suite
-EquiPlay includes **50 comprehensive automated tests**:
+EquiPlay includes **57 comprehensive automated tests**:
 ```bash
 npm test
 ```
@@ -201,7 +201,7 @@ npm run build
 
 ---
 
-## 🧪 Test Coverage Highlights (50 Tests)
+## 🧪 Test Coverage Highlights (57 Tests)
 
 - `src/utils/tournamentEngine.test.ts`:
   - EBC group standings, points-per-win/loss calculations.
@@ -218,10 +218,15 @@ npm run build
   - Doubles partner link enforcement.
   - 8-player / 2-court dynamic team and court shuffling.
   - 4-player / 1-court partner rotation.
+  - **10-Player Combinatorial Diversity**: Validates deliberate partnership across clusters (solving #3).
+  - **Session Sequence Planner**: Generates multi-match timeline with time slots and resting breakdowns.
+  - **Mathematical Impossibility Reporting**: Flags when zero back-to-back or equal games are impossible.
 - `src/store/useMatchStore.test.ts`:
   - Physical player mutex locks (zero duplicate player assignments).
   - Physical court capacity cap: $\lfloor \text{Active Players} / 4 \rfloor$.
   - Walk-in queue auto-prioritization.
+  - **Match Deletion & State Reversal**: Validates decremented games played and restored wait states (solving #4).
+  - Active match cancellation and upcoming queue replenishment.
 - `src/utils/ranking.test.ts`: Point differential, win-rate sorting, and tie-breakers.
 
 ---
