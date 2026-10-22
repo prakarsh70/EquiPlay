@@ -10,13 +10,14 @@ import {
   Sparkles,
   Clock,
   Trash2,
+  Info,
 } from 'lucide-react';
 import { useMatchStore } from '../../store/useMatchStore';
 import { Match } from '../../types/equiplay';
 import { Leaderboard } from './Leaderboard';
 import { formatDuration } from '../../utils/time';
 import { computeRankings } from '../../utils/ranking';
-import { generateProjectedSchedule } from '../../utils/matchmaker';
+import { planSessionSchedule } from '../../utils/matchmaker';
 import { Button } from '../common/Button';
 import { ElapsedTimer } from '../common/ElapsedTimer';
 import { ConfirmModal } from '../modals/ConfirmModal';
@@ -53,27 +54,44 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
     [matches]
   );
 
-  // Calculate projected upcoming matches (ChatGPT style)
-  const projectedSchedule = useMemo(() => {
+  const [plannerMatchCount, setPlannerMatchCount] = useState<number>(8);
+
+  // Generate sequence plan with global constraint satisfaction and variety optimization
+  const sessionPlan = useMemo(() => {
     const startIndex = completedMatches.length + inProgressMatches.length + 1;
     const historyEntries = [...completedMatches, ...inProgressMatches].map((m) => ({
       courtName: m.courtName,
       teamA: m.teamA,
       teamB: m.teamB,
     }));
-    return generateProjectedSchedule(
+
+    return planSessionSchedule(
       players,
-      config.courtNames,
-      upcomingMatches.map((m) => ({
-        courtName: m.courtName,
-        teamA: m.teamA,
-        teamB: m.teamB,
-      })),
-      startIndex,
-      Math.max(6, upcomingMatches.length + 4),
+      {
+        totalMatches: plannerMatchCount,
+        sessionDurationMinutes: config.bookingDurationMinutes,
+        matchDurationMinutes: 15,
+        courtNames: config.courtNames,
+        startIndex,
+        upcomingMatches: upcomingMatches.map((m) => ({
+          courtName: m.courtName,
+          teamA: m.teamA,
+          teamB: m.teamB,
+        })),
+      },
       historyEntries
     );
-  }, [players, config.courtNames, upcomingMatches, completedMatches, inProgressMatches]);
+  }, [
+    players,
+    config.courtNames,
+    config.bookingDurationMinutes,
+    completedMatches,
+    inProgressMatches,
+    upcomingMatches,
+    plannerMatchCount,
+  ]);
+
+  const projectedSchedule = sessionPlan.schedule;
 
   const handleCopySummary = () => {
     let summaryText = `🏸 EquiPlay Session Schedule & Summary\n`;
@@ -158,7 +176,7 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
           .map((id) => playerMap.get(id))
           .filter(Boolean)
           .join(', ');
-        summaryText += `Match ${m.matchNumber} [${m.courtName}]: ${a1} & ${a2} vs ${b1} & ${b2} | Resting: ${restingNames || 'None'}\n`;
+        summaryText += `Match ${m.matchNumber} (${m.timeSlot ? `${m.timeSlot} • ` : ''}${m.courtName}): ${a1} & ${a2} vs ${b1} & ${b2} | Resting: ${restingNames || 'None'}\n`;
       });
     }
 
@@ -391,22 +409,76 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
         </section>
       )}
 
-      {/* Part 3: Projected Upcoming Matches (ChatGPT Style Table) */}
-      <section className="space-y-3" aria-labelledby="projected-schedule-heading">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-sky-400" />
-            <h2
-              id="projected-schedule-heading"
-              className="text-base font-bold text-slate-100"
-            >
-              3. Projected Upcoming Matches (Next Rounds)
-            </h2>
+      {/* Part 3: Session Sequence Planner & Projected Schedule */}
+      <section className="space-y-4" aria-labelledby="projected-schedule-heading">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-sky-400" />
+              <h2
+                id="projected-schedule-heading"
+                className="text-base font-bold text-slate-100"
+              >
+                3. Session Sequence Planner &amp; Schedule
+              </h2>
+            </div>
+            <p className="text-xs text-slate-400">
+              Fair rotation sequence maximizing combination diversity while respecting bench rest times.
+            </p>
           </div>
-          <span className="text-[11px] text-slate-400">
-            Dynamic fair rotation
-          </span>
+
+          {/* Sequence Length Controls */}
+          <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1 rounded-xl">
+            {[6, 8, 10, 12].map((count) => (
+              <button
+                key={count}
+                type="button"
+                onClick={() => setPlannerMatchCount(count)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                  plannerMatchCount === count
+                    ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                }`}
+              >
+                {count} M
+              </button>
+            ))}
+          </div>
         </div>
+
+        {/* Schedule Quality & Constraint Metrics */}
+        {sessionPlan.validation.isFeasible && (
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5" />
+              Variety Score: {sessionPlan.validation.metrics.varietyScorePercent}%
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 font-mono">
+              Spread: {sessionPlan.validation.metrics.minGamesPerPlayer}–{sessionPlan.validation.metrics.maxGamesPerPlayer} games
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 font-mono">
+              Back-to-Back: {sessionPlan.validation.metrics.backToBackCount}
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 font-mono">
+              Unique Pairs: {sessionPlan.validation.metrics.uniquePartnerPairsCount}/{sessionPlan.validation.metrics.totalPossiblePairsCount}
+            </span>
+          </div>
+        )}
+
+        {/* Mathematical Impossibility & Trade-off Notes */}
+        {sessionPlan.validation.warnings.length > 0 && (
+          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs space-y-1">
+            <div className="flex items-center gap-1.5 font-bold">
+              <Info className="w-4 h-4 shrink-0 text-amber-400" />
+              <span>Scheduling Rule Feasibility Notes</span>
+            </div>
+            <ul className="list-disc list-inside space-y-0.5 text-[11px] opacity-90 pl-1">
+              {sessionPlan.validation.warnings.map((w, idx) => (
+                <li key={idx}>{w}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {projectedSchedule.length === 0 ? (
           <div className="text-center py-8 rounded-2xl bg-slate-900/40 border border-slate-800/80 text-slate-400 text-xs">
@@ -417,7 +489,8 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="border-b border-slate-800 bg-slate-950/80 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  <th className="py-3 px-3.5 text-center w-16">Match #</th>
+                  <th className="py-3 px-3 text-center w-12">#</th>
+                  <th className="py-3 px-3 w-28">Time Slot</th>
                   <th className="py-3 px-3">Court</th>
                   <th className="py-3 px-3 text-right">Team A</th>
                   <th className="py-3 px-2 text-center w-10 text-slate-500">vs</th>
@@ -449,8 +522,11 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
                         m.isQueued ? 'bg-amber-400/5' : ''
                       }`}
                     >
-                      <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-300">
+                      <td className="py-3 px-3 text-center font-mono font-bold text-slate-300">
                         #{m.matchNumber}
+                      </td>
+                      <td className="py-3 px-3 font-mono font-semibold text-slate-400 text-[11px] whitespace-nowrap">
+                        {m.timeSlot || '—'}
                       </td>
                       <td className="py-3 px-3 font-semibold text-slate-200">
                         {m.courtName}
@@ -490,7 +566,7 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
                           </span>
                         ) : (
                           <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-800 text-slate-400 border border-slate-700">
-                            Projected
+                            Planned
                           </span>
                         )}
                       </td>

@@ -84,6 +84,23 @@ export function pairFourPlayers(
     if (totalPenalty < minPenalty) {
       minPenalty = totalPenalty;
       bestCombo = combo;
+    } else if (totalPenalty === minPenalty && minPenalty > 0) {
+      // Deterministic tie-breaker: compare canonical pair keys when penalties exist
+      const currentKeys = [
+        getPairKey(bestCombo[0][0], bestCombo[0][1]),
+        getPairKey(bestCombo[1][0], bestCombo[1][1]),
+      ]
+        .sort()
+        .join(':');
+      const candidateKeys = [
+        getPairKey(combo[0][0], combo[0][1]),
+        getPairKey(combo[1][0], combo[1][1]),
+      ]
+        .sort()
+        .join(':');
+      if (candidateKeys < currentKeys) {
+        bestCombo = combo;
+      }
     }
   }
 
@@ -155,6 +172,128 @@ function buildHistoryMatrices(history: MatchHistoryEntry[]) {
 }
 
 /**
+ * Helper to generate all combinations of k elements from an array.
+ */
+function getCombinations<T>(arr: T[], k: number): T[][] {
+  if (k === 0) return [[]];
+  if (arr.length < k) return [];
+  if (arr.length === k) return [arr];
+  const [head, ...tail] = arr;
+  const withHead = getCombinations(tail, k - 1).map((c) => [head, ...c]);
+  const withoutHead = getCombinations(tail, k);
+  return [...withHead, ...withoutHead];
+}
+
+/**
+ * Evaluates candidate 4-player combinations for a single court to maximize partner & match diversity,
+ * prioritize players with lowest games, avoid back-to-back matches when bench is available,
+ * and respect linked doubles teammates.
+ */
+function selectOptimalFourForSingleCourt(
+  available: SessionPlayer[],
+  history: ReturnType<typeof buildHistoryMatrices>,
+  lastMatchPlayerIds?: Set<string>
+): SessionPlayer[] {
+  if (available.length < 4) return [];
+  if (available.length === 4) return available;
+
+  const minGames = Math.min(...available.map((p) => p.gamesPlayedToday));
+  const tier0 = available.filter((p) => p.gamesPlayedToday === minGames);
+  const tier1 = available.filter((p) => p.gamesPlayedToday === minGames + 1);
+  const tier2 = available.filter((p) => p.gamesPlayedToday > minGames + 1);
+
+  // Determine candidate subsets of 4 players
+  let candidateFourTuples: SessionPlayer[][] = [];
+
+  if (tier0.length >= 4) {
+    // If tier0 has more than 10 players, prune to top 10 by longest wait
+    const pool = [...tier0]
+      .sort((a, b) => b.consecutiveGamesSatOut - a.consecutiveGamesSatOut)
+      .slice(0, 10);
+    candidateFourTuples = getCombinations(pool, 4);
+  } else {
+    // Must include all tier0 players
+    const mustInclude = tier0;
+    const needed = 4 - mustInclude.length;
+    const pool1 = [...tier1].sort((a, b) => b.consecutiveGamesSatOut - a.consecutiveGamesSatOut);
+    const pool = (pool1.length >= needed ? pool1 : [...pool1, ...tier2]).slice(0, 10);
+
+    const combRemaining = getCombinations(pool, needed);
+    candidateFourTuples = combRemaining.map((comb) => [...mustInclude, ...comb]);
+  }
+
+  if (candidateFourTuples.length === 0) return available.slice(0, 4);
+
+  // Score each 4-tuple:
+  let bestTuple = candidateFourTuples[0];
+  let minScore = Infinity;
+
+  // Check if resting players were available
+  const hasRestingCandidates = available.some(
+    (p) => !lastMatchPlayerIds || !lastMatchPlayerIds.has(p.id)
+  );
+
+  for (const tuple of candidateFourTuples) {
+    const tupleIds = new Set(tuple.map((p) => p.id));
+    let score = 0;
+
+    // 1. Linked partner integrity: partners must not be split
+    let splitsPartner = false;
+    for (const p of tuple) {
+      if (p.partnerId) {
+        const partnerInAvailable = available.some((a) => a.id === p.partnerId);
+        if (partnerInAvailable && !tupleIds.has(p.partnerId)) {
+          splitsPartner = true;
+          break;
+        }
+      }
+    }
+    if (splitsPartner) score += 10000;
+
+    // 2. Back-to-back penalty
+    if (lastMatchPlayerIds && hasRestingCandidates) {
+      for (const p of tuple) {
+        if (lastMatchPlayerIds.has(p.id)) {
+          score += 60;
+        }
+      }
+    }
+
+    // 3. Rest wait bonus (prefer players sitting out longer)
+    for (const p of tuple) {
+      score -= p.consecutiveGamesSatOut * 2;
+    }
+
+    // 4. Co-occurrence penalty
+    for (let i = 0; i < 4; i++) {
+      for (let j = i + 1; j < 4; j++) {
+        score += history.getCoOccurrence(tuple[i].id, tuple[j].id) * 6;
+      }
+    }
+
+    // 5. Best partner assignment penalty
+    const pairing = pairFourPlayers(tuple, history.getPartnerCount, history.getOppCount);
+    const partnerPenalty =
+      history.getPartnerCount(pairing.teamA[0], pairing.teamA[1]) * 12 +
+      history.getPartnerCount(pairing.teamB[0], pairing.teamB[1]) * 12;
+    const oppPenalty =
+      history.getOppCount(pairing.teamA[0], pairing.teamB[0]) +
+      history.getOppCount(pairing.teamA[0], pairing.teamB[1]) +
+      history.getOppCount(pairing.teamA[1], pairing.teamB[0]) +
+      history.getOppCount(pairing.teamA[1], pairing.teamB[1]);
+
+    score += partnerPenalty + oppPenalty * 2;
+
+    if (score < minScore) {
+      minScore = score;
+      bestTuple = tuple;
+    }
+  }
+
+  return bestTuple;
+}
+
+/**
  * Optimally partitions players into groups of 4 to maximize mix across courts,
  * then pairs teams to avoid repeat partners, and rotates court assignments.
  */
@@ -221,7 +360,16 @@ export function generateNextMatches(
   let groups: SessionPlayer[][] = [];
 
   if (matchesToCreate === 1) {
-    groups = [playerPool];
+    const lastMatch = pastMatches.length > 0 ? pastMatches[pastMatches.length - 1] : undefined;
+    const lastMatchPlayers = lastMatch
+      ? new Set([...lastMatch.teamA, ...lastMatch.teamB])
+      : undefined;
+    const optimalFour = selectOptimalFourForSingleCourt(
+      availablePlayers,
+      history,
+      lastMatchPlayers
+    );
+    groups = [optimalFour.length === 4 ? optimalFour : playerPool];
   } else if (matchesToCreate === 2 && pastMatches.length > 0) {
     // 8 players across 2 courts: Find the partition of 8 into two 4s that minimizes match co-occurrence repeats!
     let bestScore = Infinity;
@@ -324,10 +472,10 @@ export function generateNextMatches(
   }
 
   // Default: assign target courts sequentially if provided
-  return initialPairings.map((pairing, idx) => ({
-    ...pairing,
-    courtName: targetCourts[idx] || pairing.courtName,
-  }));
+  return initialPairings.map((pairing, idx) => {
+    const court = targetCourts[idx] || pairing.courtName;
+    return court ? { ...pairing, courtName: court } : { ...pairing };
+  });
 }
 
 /**
@@ -375,6 +523,35 @@ export interface ProjectedMatch {
   teamB: [string, string];
   restingPlayerIds: string[];
   isQueued?: boolean;
+  timeSlot?: string;
+}
+
+export interface SessionPlanOptions {
+  totalMatches?: number;
+  sessionDurationMinutes?: number;
+  matchDurationMinutes?: number;
+  courtNames?: string[];
+  startIndex?: number;
+  upcomingMatches?: { courtName: string; teamA: [string, string]; teamB: [string, string] }[];
+}
+
+export interface SessionPlanValidation {
+  isFeasible: boolean;
+  warnings: string[];
+  metrics: {
+    totalMatches: number;
+    minGamesPerPlayer: number;
+    maxGamesPerPlayer: number;
+    uniquePartnerPairsCount: number;
+    totalPossiblePairsCount: number;
+    varietyScorePercent: number;
+    backToBackCount: number;
+  };
+}
+
+export interface SessionPlanResult {
+  schedule: ProjectedMatch[];
+  validation: SessionPlanValidation;
 }
 
 /**
@@ -415,6 +592,8 @@ export function generateProjectedSchedule(
   for (const m of upcomingMatches) {
     const playedIds = [...m.teamA, ...m.teamB];
     const resting = simPlayers.filter((p) => !playedIds.includes(p.id)).map((p) => p.id);
+    const startMin = (currentMatchNum - 1) * 15;
+    const endMin = currentMatchNum * 15;
 
     projected.push({
       matchNumber: currentMatchNum++,
@@ -423,6 +602,7 @@ export function generateProjectedSchedule(
       teamB: m.teamB,
       restingPlayerIds: resting,
       isQueued: true,
+      timeSlot: `${startMin}–${endMin} min`,
     });
 
     simHistory.push({
@@ -451,6 +631,8 @@ export function generateProjectedSchedule(
     const pairing = pairings[0];
     const playedIds = [...pairing.teamA, ...pairing.teamB];
     const resting = simPlayers.filter((p) => !playedIds.includes(p.id)).map((p) => p.id);
+    const startMin = (currentMatchNum - 1) * 15;
+    const endMin = currentMatchNum * 15;
 
     projected.push({
       matchNumber: currentMatchNum++,
@@ -459,6 +641,7 @@ export function generateProjectedSchedule(
       teamB: pairing.teamB,
       restingPlayerIds: resting,
       isQueued: false,
+      timeSlot: `${startMin}–${endMin} min`,
     });
 
     simHistory.push({
@@ -472,4 +655,214 @@ export function generateProjectedSchedule(
   }
 
   return projected;
+}
+
+/**
+ * Generates a full session sequence plan for one or more courts,
+ * evaluating global constraint satisfaction, variety optimization,
+ * and reporting mathematical impossibilities.
+ */
+export function planSessionSchedule(
+  players: SessionPlayer[],
+  options?: SessionPlanOptions,
+  initialHistory: MatchHistoryEntry[] = []
+): SessionPlanResult {
+  const courtNames =
+    options?.courtNames && options.courtNames.length > 0 ? options.courtNames : ['Court 1'];
+  const matchDuration = options?.matchDurationMinutes || 15;
+  const sessionDuration = options?.sessionDurationMinutes || 120;
+  const totalMatches =
+    options?.totalMatches || Math.max(1, Math.floor(sessionDuration / matchDuration));
+  const startIndex = options?.startIndex ?? 1;
+
+  const activePlayers = players.filter((p) => p.isActive);
+  const warnings: string[] = [];
+
+  if (activePlayers.length < 4 || courtNames.length === 0) {
+    return {
+      schedule: [],
+      validation: {
+        isFeasible: false,
+        warnings: ['At least 4 active players and 1 court are required to plan matches.'],
+        metrics: {
+          totalMatches: 0,
+          minGamesPerPlayer: 0,
+          maxGamesPerPlayer: 0,
+          uniquePartnerPairsCount: 0,
+          totalPossiblePairsCount: 0,
+          varietyScorePercent: 0,
+          backToBackCount: 0,
+        },
+      },
+    };
+  }
+
+  // Mathematical Impossibility Detection:
+  // 1. Consecutive back-to-back impossibility on 1 court
+  if (courtNames.length === 1 && activePlayers.length < 8) {
+    const unavoidable = 8 - activePlayers.length;
+    warnings.push(
+      `Zero back-to-back matches is mathematically impossible with ${activePlayers.length} players on 1 court. At least ${unavoidable} player(s) must play consecutively in each match.`
+    );
+  }
+
+  // 2. Equal games impossibility
+  const totalSlots = totalMatches * 4 * courtNames.length;
+  if (totalSlots % activePlayers.length !== 0) {
+    const rem = totalSlots % activePlayers.length;
+    warnings.push(
+      `Exact equal games is mathematically impossible for ${totalMatches} matches with ${activePlayers.length} players (${totalSlots} player appearances across session). ${rem} player(s) will play 1 more game than others.`
+    );
+  }
+
+  // 3. Partner slots vs max unique combinations
+  const maxPossiblePairs = (activePlayers.length * (activePlayers.length - 1)) / 2;
+  const partnerSlots = totalMatches * 2 * courtNames.length;
+  if (partnerSlots > maxPossiblePairs) {
+    warnings.push(
+      `Zero repeat partners is mathematically impossible for ${totalMatches} matches (${partnerSlots} partner slots vs ${maxPossiblePairs} total unique pairs).`
+    );
+  }
+
+  const simPlayers: SessionPlayer[] = activePlayers.map((p) => ({ ...p }));
+  const simHistory: MatchHistoryEntry[] = [...initialHistory];
+  const schedule: ProjectedMatch[] = [];
+  const uniquePartnerPairs = new Set<string>();
+  let backToBackCount = 0;
+  let lastPlayedSet = new Set<string>();
+
+  // 1. Process existing queued upcoming matches first
+  if (options?.upcomingMatches && options.upcomingMatches.length > 0) {
+    for (const m of options.upcomingMatches) {
+      if (schedule.length >= totalMatches) break;
+      const matchNum = startIndex + schedule.length;
+      const playedIds = [...m.teamA, ...m.teamB];
+
+      if (schedule.length > 0) {
+        for (const id of playedIds) {
+          if (lastPlayedSet.has(id)) backToBackCount++;
+        }
+      }
+      lastPlayedSet = new Set(playedIds);
+
+      uniquePartnerPairs.add(getPairKey(m.teamA[0], m.teamA[1]));
+      uniquePartnerPairs.add(getPairKey(m.teamB[0], m.teamB[1]));
+
+      const resting = simPlayers.filter((p) => !playedIds.includes(p.id)).map((p) => p.id);
+      const startMin = schedule.length * matchDuration;
+      const endMin = (schedule.length + 1) * matchDuration;
+
+      schedule.push({
+        matchNumber: matchNum,
+        courtName: m.courtName,
+        teamA: m.teamA,
+        teamB: m.teamB,
+        restingPlayerIds: resting,
+        timeSlot: `${startMin}–${endMin} min`,
+        isQueued: true,
+      });
+
+      simHistory.push({
+        courtName: m.courtName,
+        teamA: m.teamA,
+        teamB: m.teamB,
+      });
+
+      const playedSet = new Set(playedIds);
+      for (const p of simPlayers) {
+        if (playedSet.has(p.id)) {
+          p.gamesPlayedToday += 1;
+          p.consecutiveGamesSatOut = 0;
+        } else {
+          p.consecutiveGamesSatOut += 1;
+        }
+      }
+    }
+  }
+
+  // 2. Project remaining rounds to reach totalMatches
+  while (schedule.length < totalMatches) {
+    const matchIdx = schedule.length;
+    const matchNum = startIndex + matchIdx;
+    const courtName = courtNames[matchIdx % courtNames.length];
+    const pairings = generateNextMatches(simPlayers, 1, [], simHistory, [courtName]);
+    if (pairings.length === 0) break;
+
+    const pairing = pairings[0];
+    const playedIds = [...pairing.teamA, ...pairing.teamB];
+
+    // Check back-to-back
+    if (schedule.length > 0) {
+      for (const id of playedIds) {
+        if (lastPlayedSet.has(id)) {
+          backToBackCount++;
+        }
+      }
+    }
+    lastPlayedSet = new Set(playedIds);
+
+    // Track partner pairs
+    uniquePartnerPairs.add(getPairKey(pairing.teamA[0], pairing.teamA[1]));
+    uniquePartnerPairs.add(getPairKey(pairing.teamB[0], pairing.teamB[1]));
+
+    const resting = simPlayers.filter((p) => !playedIds.includes(p.id)).map((p) => p.id);
+
+    // Formatted time slot: e.g. 0–15 min, 15–30 min
+    const startMin = matchIdx * matchDuration;
+    const endMin = (matchIdx + 1) * matchDuration;
+    const timeSlot = `${startMin}–${endMin} min`;
+
+    schedule.push({
+      matchNumber: matchNum,
+      courtName,
+      teamA: pairing.teamA,
+      teamB: pairing.teamB,
+      restingPlayerIds: resting,
+      timeSlot,
+      isQueued: false,
+    });
+
+    simHistory.push({
+      courtName,
+      teamA: pairing.teamA,
+      teamB: pairing.teamB,
+    });
+
+    // Advance counters
+    const playedSet = new Set(playedIds);
+    for (const p of simPlayers) {
+      if (playedSet.has(p.id)) {
+        p.gamesPlayedToday += 1;
+        p.consecutiveGamesSatOut = 0;
+      } else {
+        p.consecutiveGamesSatOut += 1;
+      }
+    }
+  }
+
+  const gamesCounts = simPlayers.map((p) => p.gamesPlayedToday);
+  const minGames = Math.min(...gamesCounts);
+  const maxGames = Math.max(...gamesCounts);
+  const denominator = Math.min(maxPossiblePairs, partnerSlots);
+  const varietyScorePercent =
+    denominator > 0
+      ? Math.min(100, Math.round((uniquePartnerPairs.size / denominator) * 100))
+      : 100;
+
+  return {
+    schedule,
+    validation: {
+      isFeasible: true,
+      warnings,
+      metrics: {
+        totalMatches: schedule.length,
+        minGamesPerPlayer: minGames,
+        maxGamesPerPlayer: maxGames,
+        uniquePartnerPairsCount: uniquePartnerPairs.size,
+        totalPossiblePairsCount: maxPossiblePairs,
+        varietyScorePercent,
+        backToBackCount,
+      },
+    },
+  };
 }
