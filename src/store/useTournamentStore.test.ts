@@ -79,6 +79,19 @@ describe('useTournamentStore', () => {
     expect(matches[0].matchCode).toBe('RR-1');
   });
 
+  it('initializes matches with default court assignments that user can change', () => {
+    const { matches, courts } = useTournamentStore.getState();
+    expect(matches[0].courtName).toBe(courts[0]);
+    expect(matches[1].courtName).toBe(courts[1]);
+
+    // User changes court
+    useTournamentStore.getState().assignMatchCourt(matches[0].id, 'Court 5');
+    const updated = useTournamentStore
+      .getState()
+      .matches.find((m) => m.id === matches[0].id);
+    expect(updated?.courtName).toBe('Court 5');
+  });
+
   it('assigns court to a match', () => {
     const match = useTournamentStore.getState().matches[0];
     useTournamentStore.getState().assignMatchCourt(match.id, 'Court 2');
@@ -98,6 +111,41 @@ describe('useTournamentStore', () => {
       .matches.find((m) => m.id === match.id);
     expect(updated?.status).toBe('IN_PROGRESS');
     expect(updated?.startTime).toBeDefined();
+  });
+
+  it('auto-assigns available court when starting a match if its assigned court is occupied', () => {
+    const { matches } = useTournamentStore.getState();
+    const match1 = matches[0];
+    const match2 = matches[1];
+
+    // Assign both to Court 2 manually
+    useTournamentStore.getState().assignMatchCourt(match1.id, 'Court 2');
+    useTournamentStore.getState().assignMatchCourt(match2.id, 'Court 2');
+
+    // Start match1 on Court 2
+    useTournamentStore.getState().startMatch(match1.id);
+    expect(
+      useTournamentStore.getState().matches.find((m) => m.id === match1.id)?.courtName
+    ).toBe('Court 2');
+
+    // Start match2: since Court 2 is already busy, it automatically gets an available court (Court 3)
+    useTournamentStore.getState().startMatch(match2.id);
+    const updatedMatch2 = useTournamentStore.getState().matches.find((m) => m.id === match2.id);
+    expect(updatedMatch2?.status).toBe('IN_PROGRESS');
+    expect(updatedMatch2?.courtName).toBe('Court 3');
+  });
+
+  it('autoAssignCourts backfills missing courts sequentially', () => {
+    // Clear courtName on all matches
+    useTournamentStore.setState((state) => ({
+      matches: state.matches.map((m) => ({ ...m, courtName: undefined })),
+    }));
+    expect(useTournamentStore.getState().matches[0].courtName).toBeUndefined();
+
+    useTournamentStore.getState().autoAssignCourts();
+    const { matches, courts } = useTournamentStore.getState();
+    expect(matches[0].courtName).toBe(courts[0]);
+    expect(matches[1].courtName).toBe(courts[1]);
   });
 
   it('completes a match, sets score, marks winner and stamps endTime', () => {
@@ -202,5 +250,33 @@ describe('useTournamentStore', () => {
     const matchesBefore = useTournamentStore.getState().matches;
     useTournamentStore.getState().generateFixtures();
     expect(useTournamentStore.getState().matches).toBe(matchesBefore);
+  });
+
+  it('supports official EBC settings, walkover award, and sync triggers', () => {
+    const { settings, courts } = useTournamentStore.getState();
+    expect(settings.tournamentName).toBe('EBC Badminton Championship');
+    expect(settings.venueName).toBe('Shuttlers Zone, Wakad');
+    expect(courts).toEqual(['Court 2', 'Court 3', 'Court 4', 'Court 5']);
+    expect(settings.groupStageFormat.targetPoints).toBe(21);
+    expect(settings.groupStageFormat.pointsPerWin).toBe(2);
+
+    // Update settings
+    useTournamentStore.getState().setSettings({
+      tournamentName: 'EBC Summer Slam 2026',
+      courts: ['Court 1', 'Court 2'],
+    });
+
+    const updated = useTournamentStore.getState();
+    expect(updated.settings.tournamentName).toBe('EBC Summer Slam 2026');
+    expect(updated.courts).toEqual(['Court 1', 'Court 2']);
+
+    // Award walkover
+    const match = updated.matches[0];
+    updated.awardWalkover(match.id, match.teamAId);
+    const completedMatch = useTournamentStore.getState().matches.find((m) => m.id === match.id);
+    expect(completedMatch?.status).toBe('COMPLETED');
+    expect(completedMatch?.winnerTeamId).toBe(match.teamAId);
+    expect(completedMatch?.scoreA).toBe(21);
+    expect(completedMatch?.scoreB).toBe(0);
   });
 });

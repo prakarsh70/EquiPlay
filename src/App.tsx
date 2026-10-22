@@ -10,8 +10,9 @@ import { SessionSummaryView } from './components/history/SessionSummaryView';
 import { ModeSelector } from './components/hub/ModeSelector';
 import { TournamentDashboard } from './components/tournament/TournamentDashboard';
 import { TournamentSetupView } from './components/tournament/TournamentSetupView';
+import { SpectatorView } from './components/tournament/SpectatorView';
 
-export type AppMode = 'HUB' | 'DAILY_PLAY' | 'TOURNAMENT';
+export type AppMode = 'HUB' | 'DAILY_PLAY' | 'TOURNAMENT' | 'SPECTATOR';
 
 const MODE_STORAGE_KEY = 'equiplay-active-app-mode';
 
@@ -19,9 +20,26 @@ export const App: React.FC = () => {
   const currentDailyView = useMatchStore((state) => state.currentView);
   const tournamentStatus = useTournamentStore((state) => state.config.status);
 
+  // Parse URL search params for spectator mode (?tournamentId=ebc-2026&view=spectator)
+  const [spectatorTournamentId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const view = params.get('view');
+      const tid = params.get('tournamentId');
+      if (view === 'spectator' && tid) {
+        return tid;
+      }
+    }
+    return null;
+  });
+
   // AppMode with localStorage persistence
   const [mode, setMode] = useState<AppMode>(() => {
-    if (typeof window !== 'undefined' && window.localStorage) {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('view') === 'spectator' && params.get('tournamentId')) {
+        return 'SPECTATOR';
+      }
       const savedMode = window.localStorage.getItem(MODE_STORAGE_KEY) as AppMode | null;
       if (savedMode && ['HUB', 'DAILY_PLAY', 'TOURNAMENT'].includes(savedMode)) {
         return savedMode;
@@ -31,7 +49,7 @@ export const App: React.FC = () => {
   });
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.localStorage) {
+    if (typeof window !== 'undefined' && mode !== 'SPECTATOR') {
       window.localStorage.setItem(MODE_STORAGE_KEY, mode);
     }
   }, [mode]);
@@ -98,6 +116,10 @@ export const App: React.FC = () => {
             onSwitchMode={() => setMode('HUB')}
           />
         )
+      )}
+
+      {mode === 'SPECTATOR' && spectatorTournamentId && (
+        <SpectatorView tournamentId={spectatorTournamentId} />
       )}
 
       <Analytics />

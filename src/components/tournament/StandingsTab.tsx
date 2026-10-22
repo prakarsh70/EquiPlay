@@ -9,7 +9,7 @@ import {
 import { TOURNAMENT_GROUPS } from '../../data/tournamentSeed';
 
 export const StandingsTab: React.FC = () => {
-  const { teams, matches, config, setActiveTab } = useTournamentStore();
+  const { teams, matches, config, settings, setActiveTab } = useTournamentStore();
   const [selectedGroup, setSelectedGroup] = useState<GroupId | 'ALL'>('ALL');
 
   if (config.format === 'KNOCKOUT') {
@@ -173,7 +173,7 @@ export const StandingsTab: React.FC = () => {
   }
 
   // GROUP_KNOCKOUT: 8 Pools
-  const allStandings = computeAllStandings(teams, matches);
+  const allStandings = computeAllStandings(teams, matches, settings);
   const activeGroups = TOURNAMENT_GROUPS.filter((g) =>
     teams.some((t) => t.group === g)
   );
@@ -267,6 +267,7 @@ export const StandingsTab: React.FC = () => {
                       <th className="py-2.5 px-2 text-center" title="Points For">PF</th>
                       <th className="py-2.5 px-2 text-center" title="Points Against">PA</th>
                       <th className="py-2.5 px-2.5 text-center font-mono font-bold" title="Point Differential">PD</th>
+                      <th className="py-2.5 px-2.5 text-right font-mono font-bold text-emerald-400" title="Tournament Points">Pts</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 font-medium">
@@ -346,6 +347,9 @@ export const StandingsTab: React.FC = () => {
                                 ? `+${standing.pointDiff}`
                                 : standing.pointDiff}
                             </span>
+                          </td>
+                          <td className="py-3 px-2.5 text-right font-mono font-black text-emerald-400 text-sm">
+                            {standing.points ?? standing.won * 2}
                           </td>
                         </tr>
                       );

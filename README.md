@@ -1,10 +1,10 @@
 # 🏸 EquiPlay
 
-> **Intelligent Badminton Matchmaking & Court Rotation Engine (Offline-First PWA)**  
-> Engineered to eliminate wait-time disputes, repeat matchups, and court-hogging in recreational sessions and club socials.
+> **Intelligent Badminton Matchmaking, Court Rotation & Tournament Engine (Offline-First PWA)**  
+> Engineered to eliminate wait-time disputes, repeat matchups, and court chaos in club socials and competitive badminton tournaments.
 
 [![Live Demo](https://img.shields.io/badge/Demo-equi--play.vercel.app-10b981?style=for-the-badge&logo=vercel&logoColor=white)](https://equi-play.vercel.app/)
-[![Tests](https://img.shields.io/badge/Tests-27%20Passing-emerald?style=for-the-badge&logo=vitest&logoColor=white)](https://github.com/prakarsh70/EquiPlay)
+[![Tests](https://img.shields.io/badge/Tests-50%20Passing-emerald?style=for-the-badge&logo=vitest&logoColor=white)](https://github.com/prakarsh70/EquiPlay)
 [![TypeScript](https://img.shields.io/badge/TypeScript-7.0-3178c6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19.3-61dafb?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4.3-38bdf8?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
@@ -22,27 +22,41 @@
 
 ## 💡 The Problem & The Solution
 
-In social badminton sessions (8–24+ players across 1–4 courts), coordinators face a constant coordination nightmare:
+In social sessions and amateur tournaments (8–32+ players across 1–8 courts), organizers face constant coordination nightmares:
 1. **Inequitable Play Time:** People who are vocal get more court time, while quiet players stay on the bench.
-2. **Repetitive Matchups:** Without algorithmic pairing, the same 4 players often end up playing together on the same court for the entire session.
-3. **Late Arrivals & Walk-ins:** Manually restructuring a tournament bracket when players arrive 20 minutes late or leave early is chaotic.
-4. **Physical Impossibility Bugs:** Manually tracking players often leads to accidental duplicate assignments (e.g., Player A assigned to Court 1 and Court 2 simultaneously).
+2. **Repetitive Matchups:** Without algorithmic pairing, the same players play each other on the same court for the entire session.
+3. **Tournament Paper Chaos:** Manually tracking 48 group matches and calculating tie-breakers (Points vs. Point Differential vs. Head-to-Head) on clipboards causes delays and disputes.
+4. **Spectator Anxiety:** Players constantly swarm the tournament desk asking *"When is my next match?"* and *"What court am I on?"*
 
-**EquiPlay** is an intelligent, offline-first rotation engine that automates player selection, partner variety, opponent diversity, court rotation, and score logging with mathematical fairness guarantees.
+**EquiPlay** provides a dual-engine solution:
+- **Casual Daily Rotation Mode:** Automates fair queueing, partner variety, opponent diversity, and court rotation with mathematical guarantees.
+- **Official Tournament Mode:** Manages professional group-and-knockout championships (e.g. EBC Badminton Championship) with automated tie-breaker standings, live court dispatching, zero-chaos mobile spectator QR views, and cloud sync.
 
 ---
 
 ## ✨ Key Features
 
+### 🏸 Mode 1: Casual Daily Play Engine (Phase 1)
 - **⚖️ Fair Wait-Time Weighting:** Dynamically prioritizes players with the fewest games played, longest consecutive bench wait, and arrival order.
-- **🔄 Combinatorial Shuffling:** Analyzes match co-occurrence and historical partner frequencies to maximize player variety and rotate players between different courts.
-- **🛡️ Strict Physical Player Mutex:** Enforces physical constraints ($\lfloor \text{Active Players} / 4 \rfloor$). A player can **never** be assigned to or started on two courts simultaneously.
-- **🤝 Doubles Partner Pairing:** Link two players as teammates (e.g. doubles tournament partners). They will always play together on the same side, while their opponents and courts dynamically rotate.
-- **📋 ChatGPT-Style Projected Schedule & Match Log:** Real-time projected fixture table predicting upcoming rounds alongside a complete match history log and leaderboard.
-- **🏸 Distinct Visual Metaphors:**
-  - **On Court Now:** Authentic badminton court surface lines, net divider, and real-time game timers.
-  - **Up Next Queue:** Tactical "VS" duel clash cards with dynamic crossed-rackets and shuttlecock trajectory illustrations.
-- **📱 100% Offline-First PWA:** Zero external API or backend dependency. All session state is persisted locally in the browser with full service-worker caching.
+- **🔄 Combinatorial Shuffling:** Analyzes match co-occurrence and historical partner frequencies to maximize variety across courts.
+- **🛡️ Strict Physical Player Mutex:** Enforces physical constraints ($\lfloor \text{Active Players} / 4 \rfloor$). A player can **never** be assigned to two courts simultaneously.
+- **🤝 Doubles Partner Pairing:** Link two players as permanent partners while opponents and courts rotate dynamically.
+- **📋 Projected Schedule & Match Log:** Real-time projected round predictions alongside complete history and session leaderboard.
+
+### 🏆 Mode 2: Official Tournament Arena & Live Spectator System (Phase 2)
+- **🌐 Isolated Dual-Engine Hub:** Instant switching between Casual Daily Play and Tournament Mode with zero state leakage.
+- **📜 Configurable EBC Rules Schema:** Pre-seeded with official EBC tournament rules (4 arena courts: Courts 2–5, 21-pt pool matches, 15-pt knockouts, 2 pts per win, tie-breakers: Points $\rightarrow$ Differential $\rightarrow$ Points For).
+- **🏟️ 32-Team Seeded Roster & 63 Fixtures:** Pre-populated with 32 teams across 8 groups (A–H) and 63 scheduled fixtures (48 group + 8 R16 + 4 QF + 2 SF + 1 Final).
+- **⚡ Availability-Driven Court Scheduler:** Automatically detects idle courts and assigns matches sequentially, preventing double-bookings.
+- **📊 Real-Time Tie-Breakers & Knockout Auto-Progression:** Computes dynamic standings after every point logged, flags Top 2 qualifiers per group, and auto-populates the 16-team elimination bracket.
+- **📲 Live Spectator QR Mode (`?tournamentId=...&view=spectator`):**
+  - Read-only, auto-updating mobile dashboard for players and fans.
+  - **Live On Court Cards:** Real-time scores and team rosters for Courts 2, 3, 4, 5.
+  - **Up Next Queue:** Upcoming matches so players can warm up ahead of time.
+  - **Multi-Pool Standings Accordion:** Persistent open/close state and scroll position preservation across updates.
+  - **Knockout Bracket Tree:** Clean view of advancing teams.
+- **📤 Sharable QR & WhatsApp Snapshot:** Instant high-contrast QR code for courtside scanning and 1-tap formatted WhatsApp snapshot sharing.
+- **☁️ Hybrid Cloud Sync (`syncService.ts`):** Offline-first local storage & `BroadcastChannel` with plug-and-play Supabase REST persistence.
 
 ---
 
@@ -50,60 +64,61 @@ In social badminton sessions (8–24+ players across 1–4 courts), coordinators
 
 ```mermaid
 flowchart TD
-    subgraph UI["Reactive UI Layer (React 19 + Tailwind v4)"]
-        Dashboard["Dashboard View"]
-        OnCourt["On-Court Zone (Live Timers)"]
-        UpNext["Up-Next Queue (VS Clash Cards)"]
-        Bench["Bench & Roster Zone"]
-        Schedule["Schedule & Match History"]
+    subgraph Client["EquiPlay Client (React 19 + PWA)"]
+        Hub["Mode Hub Router"]
+        
+        subgraph Daily["Casual Daily Play Engine (Phase 1)"]
+            DailyStore["useMatchStore ('equiplay-session-storage')"]
+            Matchmaker["Core Analytical Matchmaker"]
+            DailyUI["On-Court Zone • Up-Next Clash • Bench"]
+        end
+        
+        subgraph Tournament["Tournament Arena (Phase 2)"]
+            TournStore["useTournamentStore ('equiplay-tournament-storage')"]
+            TournEngine["Tournament Engine (EBC Rules & Tie-Breakers)"]
+            AdminUI["Fixtures • Bracket • Standings • Roster"]
+            SpectatorUI["Mobile Spectator View (?view=spectator)"]
+        end
+        
+        subgraph Sync["Lightweight Cloud Sync Layer"]
+            SyncService["syncService.ts (BroadcastChannel + REST)"]
+        end
     end
 
-    subgraph Store["State Management (Zustand)"]
-        State["useMatchStore"]
-        Storage[("Browser LocalStorage / Persistence")]
-        State <--> Storage
+    subgraph Cloud["Optional Cloud Persistence"]
+        Supabase[("Supabase / REST Cloud Server")]
     end
 
-    subgraph Engine["Core Matchmaker & Analytical Engine"]
-        Matcher["generateNextMatches()"]
-        Pairer["pairFourPlayers()"]
-        History["buildHistoryMatrices()"]
-        Projector["generateProjectedSchedule()"]
-    end
-
-    UI <--> State
-    State --> Engine
-    Engine --> State
+    Hub --> Daily
+    Hub --> Tournament
+    DailyStore <--> Matchmaker
+    DailyStore <--> DailyUI
+    TournStore <--> TournEngine
+    TournStore <--> AdminUI
+    TournStore --> SyncService
+    SyncService --> SpectatorUI
+    SyncService <..> Supabase
 ```
 
 ---
 
-## 🧠 The Matchmaking Algorithm
+## 🧠 The Matchmaking & Tournament Engines
 
-EquiPlay does not use static brackets or naive random shuffling. It runs an analytical optimization engine before every match:
+### 1. Casual Rotation Optimization
+1. **Candidate Priority:**
+   $$\text{Rank Score} = (\text{Games Played Today}) \uparrow \longrightarrow (\text{Consecutive Games Sat Out}) \downarrow \longrightarrow (\text{Arrival Timestamp}) \uparrow$$
+2. **Cross-Court Shuffling:**
+   $$\text{Cost}(G_1, G_2) = \sum_{(u, v) \in G_1} \text{coOccurrence}(u, v) + \sum_{(u, v) \in G_2} \text{coOccurrence}(u, v)$$
+3. **Partner Penalty:**
+   $$\text{Penalty} = 10 \cdot (\text{PartnerRepeatCount}(T_A) + \text{PartnerRepeatCount}(T_B)) + \text{OpponentRepeatCount}$$
 
-### 1. Candidate Selection (Who Plays Next?)
-Eligible bench players are ranked using a multi-variable sort:
-$$\text{Rank Score} = (\text{Games Played Today}) \uparrow \longrightarrow (\text{Consecutive Games Sat Out}) \downarrow \longrightarrow (\text{Arrival Timestamp}) \uparrow$$
-This guarantees that bench-sitters are prioritized immediately when a court opens.
-
-### 2. Cross-Court Partitioning (Co-Occurrence Minimization)
-When multiple courts queue up (e.g., 8 players across 2 courts), the engine evaluates candidate partitions:
-$$\text{Cost}(G_1, G_2) = \sum_{(u, v) \in G_1} \text{coOccurrence}(u, v) + \sum_{(u, v) \in G_2} \text{coOccurrence}(u, v)$$
-It selects the partition that minimizes repeat matchups, guaranteeing that players from Court 1 and Court 2 cross-pollinate.
-
-### 3. Team Formation (Partner Repeat Minimization)
-For any 4 drafted players, the engine evaluates all valid doubles configurations:
-- **Combo 0:** $[P_0, P_3]$ vs $[P_1, P_2]$
-- **Combo 1:** $[P_0, P_2]$ vs $[P_1, P_3]$
-- **Combo 2:** $[P_0, P_1]$ vs $[P_2, P_3]$
-
-$$\text{Team Penalty} = 10 \cdot (\text{PartnerRepeatCount}(T_A) + \text{PartnerRepeatCount}(T_B)) + \text{OpponentRepeatCount}$$
-The combination with the lowest penalty is chosen, ensuring players rotate teammates every round.
-
-### 4. Court Rotation (Balancing Court Exposure)
-Matches are assigned to courts to prevent players from staying on the exact same physical court back-to-back:
-$$\text{Court Cost}(m, c) = \sum_{p \in m} \left(2 \cdot \text{gamesOnCourt}(p, c) + 4 \cdot [\text{lastCourt}(p) == c]\right)$$
+### 2. Official Tournament Engine (EBC Standards)
+- **Pool Ranking Formula:**
+  $$\text{Priority: Points} \rightarrow \text{Head-to-Head} \rightarrow \text{Point Differential } (\Delta) \rightarrow \text{Total Points For} \rightarrow \text{Seed Number}$$
+- **Knockout Bracket Sync:**
+  Winners of Pool matches advance deterministically to seeded Round of 16 slots (`A1 vs B2`, `C1 vs D2`, etc.).
+- **Automatic Court Availability:**
+  Matches start on the first unoccupied court ($\text{Court} \notin \text{LiveCourts}$) preventing arena congestion.
 
 ---
 
@@ -112,14 +127,16 @@ $$\text{Court Cost}(m, c) = \sum_{p \in m} \left(2 \cdot \text{gamesOnCourt}(p, 
 | Technology | Purpose |
 | :--- | :--- |
 | **React 19** | Concurrent UI rendering and component architecture |
-| **TypeScript 7** | End-to-end type safety, strict interface contracts |
+| **TypeScript 7** | End-to-end strict typing for match contracts and tournament rules |
 | **Tailwind CSS v4** | Modern theme styling, utility-first UI design system |
-| **Zustand** | Lightweight, high-performance global state machine |
-| **Vitest** | Comprehensive unit & integration testing suite (27 passing tests) |
-| **Vite 8** | Sub-millisecond HMR and optimized production bundling |
-| **Vite PWA Plugin** | Service worker lifecycle, web app manifest, offline asset caching |
-| **Lucide React** | Clean, accessible iconography |
-| **Canvas Confetti** | Session completion celebration effects |
+| **Zustand 5** | Isolated state stores (`useMatchStore` & `useTournamentStore`) |
+| **qrcode.react** | High-contrast courtside QR code generation |
+| **Vitest 5** | Comprehensive test suite (**50 passing unit and integration tests**) |
+| **Vite 8** | Sub-millisecond HMR, multi-host local networking (`server.host: true`) |
+| **Vite PWA Plugin** | Service worker lifecycle, web app manifest, 100% offline caching |
+| **Supabase REST** | Zero-dependency cloud database synchronization for mobile spectators |
+| **Lucide React** | Clean, accessible sports & tournament iconography |
+| **Canvas Confetti** | Celebration visual effects on championship completion |
 | **Vercel** | Edge deployment and continuous integration |
 
 ---
@@ -141,104 +158,130 @@ cd EquiPlay
 npm install
 ```
 
-### 3. Start Local Development Server
+### 3. Local Development
 ```bash
 npm run dev
 ```
-Open your browser at `http://localhost:5173`.
+Vite automatically serves locally and across your Wi-Fi network:
+```
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.168.x.x:5173/
+```
+Open on your computer or test on your phone over Wi-Fi.
 
-### 4. Run Test Suite
-EquiPlay includes 27 comprehensive tests covering matchmaker algorithms, concurrency, court limits, and store transitions:
+### 4. Optional: Cloud Sync on Cellular (Supabase)
+To allow players on cellular 4G/5G outside local Wi-Fi to receive live spectator updates:
+1. Create a free project at [supabase.com](https://supabase.com).
+2. Run this table creation script in the **Supabase SQL Editor**:
+   ```sql
+   create table if not exists tournaments (
+     tournament_id text primary key,
+     data jsonb not null,
+     updated_at timestamptz default now()
+   );
+   alter table tournaments disable row level security;
+   ```
+3. Copy your **Project URL** and **Anon API Key** into a `.env` file:
+   ```env
+   VITE_SUPABASE_URL=https://your-project.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-public-key
+   ```
+4. Restart Vite (`npm run dev`).
+
+### 5. Run Test Suite
+EquiPlay includes **50 comprehensive automated tests**:
 ```bash
 npm test
 ```
 
-### 5. Build for Production
-Compiles TypeScript and creates an optimized PWA bundle in `dist/`:
+### 6. Build for Production
 ```bash
 npm run build
 ```
 
-### 6. Preview Production Build
-```bash
-npm run preview
-```
-
 ---
 
-## 🧪 Test Coverage Highlights
+## 🧪 Test Coverage Highlights (50 Tests)
 
-- `src/utils/ranking.test.ts`: Point differential, win-rate sorting, and tie-breakers.
+- `src/utils/tournamentEngine.test.ts`:
+  - EBC group standings, points-per-win/loss calculations.
+  - Multi-tier tie-breakers (Points $\rightarrow$ Point Differential $\rightarrow$ Points For).
+  - Knockout tree propagation from Pool qualifiers into R16, QF, SF, and Finals.
+  - Walkover awards (`awardWalkover`) with automatic 21-0 scores.
+- `src/store/useTournamentStore.test.ts`:
+  - 32-team initialization and 63-fixture generation.
+  - Setup immutability enforcement once matches have started.
+  - Automatic court assignment based on court availability.
+  - Score logging, winner determination, and store reset.
 - `src/utils/matchmaker.test.ts`:
   - Fair rotation priority (bench wait time vs games played).
   - Doubles partner link enforcement.
-  - 8-player / 2-court dynamic team and court shuffling across consecutive rounds.
+  - 8-player / 2-court dynamic team and court shuffling.
   - 4-player / 1-court partner rotation.
 - `src/store/useMatchStore.test.ts`:
-  - Player concurrency locks (zero player duplication across courts).
+  - Physical player mutex locks (zero duplicate player assignments).
   - Physical court capacity cap: $\lfloor \text{Active Players} / 4 \rfloor$.
   - Walk-in queue auto-prioritization.
-  - Inactive player purge and manual lineup validations.
+- `src/utils/ranking.test.ts`: Point differential, win-rate sorting, and tie-breakers.
 
 ---
 
-## 🚀 Product Roadmap & Architectural Phases
+## 🗺️ Product Roadmap & Architectural Phases
 
-EquiPlay follows a strict phased architecture designed to isolate client-side matchmaking and competitive engines before introducing server synchronization.
+```mermaid
+timeline
+    title EquiPlay Evolution Roadmap
+    section Phase 1 (Completed)
+        Daily Casual Matchmaking : Mathematical Fairness Engine : Localhost PWA
+    section Phase 2 (Completed)
+        Official Tournament Mode : EBC Rules & 32-Team Bracket : Live Spectator QR & Cloud Sync
+    section Phase 3 (Next)
+        Courtside Arena TV Board : Mobile Referee Scoring Remote : Recurring Club Archives
+    section Phase 4 (Upcoming)
+        Automated Court Time Pacing : Elo Skill Balancing : Multi-Device Audio Announcements
+    section Phase 5 (Future)
+        Lifetime Club Analytics : Multi-Sport Expansion (Pickleball & Padel)
+```
 
-### Phase 1: Daily Court Rotation & Session Management (Local MVP) — [COMPLETED / IN PROGRESS]
-* **Client-Only Architecture:** 100% offline-first Progressive Web App built with React, TypeScript, Tailwind CSS, and Zustand (`persist` middleware to `localStorage` under `'equiplay-session-storage'`).
-* **Courtside Heuristic Matchmaker:** Pure mathematical selection balancing `gamesPlayedToday` (equity) with `consecutiveGamesSatOut` (bench idle penalty) and snake-draft pairings.
-* **Live Courtside Utility:** Multi-court active queues, arrival time stamps (`arrivalTime`) for late walk-ins, and high-contrast, glare-resistant dark mode.
+### ✅ Phase 1: Daily Court Rotation & Session Management — [COMPLETED]
+- 100% offline-first PWA for casual badminton sessions (`useMatchStore`).
+- Mathematical fairness engine balancing court time, bench wait penalty, and opponent variety.
+- Multi-court live queue, late walk-in arrival timestamps, and doubles partner linking.
 
-### Phase 2: Offline Tournament Arena & Competition Formats — [CURRENT EXECUTION]
-* **Dual-Mode Application Hub:** Root-level mode router cleanly separating "Daily Court Rotation" from "Tournament Mode" with zero state leakage.
-* **Isolated State Architecture:** Independent Zustand store persisted under `'equiplay-tournament-storage'`, ensuring daily casual sessions and high-stakes tournament brackets never mutate each other.
-* **Multi-Format Tournament Engine:**
-  * **World Cup Format (Group Stage to Single Elimination):** Deterministic round-robin pool fixtures for 8 groups (A–H) of 4 teams (48 matches), auto-calculating live standings (Points, Wins, Head-to-Head, Point Differential $\Delta$).
-  * **Automated Knockout Progression:** Seeded bracket populating Top-2 qualifiers from each pool into Round of 16 $\rightarrow$ Quarterfinals $\rightarrow$ Semifinals $\rightarrow$ Finals.
-  * **Pure Round Robin & Single Elimination:** Configurable quick draws for smaller 4–8 team single-pool events.
-* **Pre-Seeded 32-Team Roster:** Out-of-the-box support for the annual October 24 badminton doubles championship with instant courtside match dispatching.
+### ✅ Phase 2: Tournament Arena, Official Rules & Real-Time Spectator Mode — [COMPLETED]
+- Dual-mode architecture isolating Casual Daily Play from Tournament Mode (`useTournamentStore`).
+- Configurable rules schema seeded with official EBC tournament defaults.
+- 32-team World Cup format (8 groups of 4 doubles pairs, 48 round-robin matches + 15 knockout matches).
+- Availability-driven court allocator assigning free courts dynamically.
+- Live tie-breaker engine with automatic progression from group qualifiers into the Round of 16 bracket.
+- Zero-chaos Mobile Spectator Dashboard (`?view=spectator`) with live court scores, up-next queue, multi-pool accordion, and bracket views.
+- Sharable high-contrast QR code modal and WhatsApp live summary generator.
+- Pluggable cloud synchronization layer (`syncService.ts`) with Supabase REST integration.
 
-### Phase 3: Offline-to-Cloud Synchronization & Multi-Device Live View
-* **Zero-Data-Loss Migration:** Batch-sync local `Match` and `TournamentMatch` records (`syncStatus === 'LOCAL'`) to a Firebase/Supabase backend using native collision-free UUIDs (`crypto.randomUUID()`).
-* **Spectator Live-View:** Read-only QR code display letting players in the arena check court allocations and pool standings directly from their personal phones.
-* **Group Cloud Tenancy:** Persistent group codes to recall recurring club rosters and team doubles pairs.
+### 🔜 Phase 3: Arena TV Display & Courtside Umpire Remote Network — [UPCOMING]
+- **🖥️ Full-Screen Arena TV Display Mode (`?view=tv`):** Ultra-high contrast, large-type scoreboard dashboard designed for ceiling projectors, court-side tablets, and HDMI monitors.
+- **📱 Umpire Scoring Remote (`?view=umpire&court=Court2`):** Simplified touch remote for court chair umpires to score points point-by-point, sync live rally scores, and trigger service court changes.
+- **📢 Voice Call-Outs (Web Speech API):** Automatic audio announcements over arena PA (e.g. *"Court 3: Match G-B-4, Team Tanay & Rohit please report to court"*).
+- **📂 Recurring Club Tenancy & Roster Vault:** Multi-tournament history archives, club member databases, and past championship records.
 
-### Phase 4: Advanced Matchmaking Engine Upgrades
-* **Constraint-Based Pairing Matrix:** Replace basic snake drafting with a multidimensional partnership and opponent variety matrix to avoid back-to-back duplicate pairings.
-* **Time-Panic Feedback Loop:** Dynamic pacing engine comparing elapsed match durations against booking clock limits, automatically adjusting game point formats (21 $\rightarrow$ 15 $\rightarrow$ 11) in the final 30 minutes of a court booking.
+### 🔮 Phase 4: Dynamic Matchmaking & Pacing Upgrades
+- **⏱️ Booking Time-Panic Loop:** Automatic match duration forecasting comparing elapsed session time against venue booking end, auto-tapering point caps (21 $\rightarrow$ 15 $\rightarrow$ 11) in final 30 minutes.
+- **📈 Elo / DUPR Skill Rating Integration:** Seed teams by skill tier to balance pools and prevent early-round blowouts.
 
-### Phase 5: Historical Analytics & Gamification (`RTK Query` / `TanStack Query`)
-* **Hybrid Client/Server State:** Integrate TanStack Query / RTK Query alongside Zustand for background data revalidation and server-side cache management.
-* **Lifetime Synergy Dashboards:** Player stats, partner win rates, nemesis tracking, and attendance badges (e.g., "Early Bird" vs. "Always Late").
-
-### Phase 6: Multi-Sport Scaling
-* **Universal Racket Engine:** Abstract court capacity, scoring caps, and deuce rules to support Pickleball, Padel, Tennis, Table Tennis, and Half-Court Basketball.
+### 🌟 Phase 5: Lifetime Analytics & Multi-Sport Scale
+- **📊 Club Synergy & Head-to-Head Analytics:** Lifetime partner win rates, nemesis tracking, and attendance badges.
+- **🏸 Multi-Racket Expansion:** Generalize scoring caps, service rules, and court layouts for **Pickleball**, **Padel**, **Squash**, and **Table Tennis**.
 
 ---
 
-## 🤝 Contributing Workflow
+## 🤝 Contributing
 
 We use a feature-branch workflow with Pull Requests:
 
-1. **Fork or create a feature branch:**
-   ```bash
-   git checkout -b feat/my-new-feature
-   ```
-2. **Make your changes and verify tests:**
-   ```bash
-   npm test
-   npm run build
-   ```
-3. **Commit your changes:**
-   ```bash
-   git commit -m "feat: add support for timed rounds"
-   ```
-4. **Push to GitHub and open a Pull Request:**
-   ```bash
-   git push origin feat/my-new-feature
-   ```
+1. Fork or branch: `git checkout -b feat/my-feature`
+2. Test changes: `npm test && npm run build`
+3. Commit: `git commit -m "feat: description"`
+4. Push and open PR: `git push origin feat/my-feature`
 
 ---
 
@@ -246,9 +289,6 @@ We use a feature-branch workflow with Pull Requests:
 
 This project is licensed under the [ISC License](LICENSE).
 
----
-
 <p align="center">
   Built with 🏸 by badminton players, for badminton players.
 </p>
-

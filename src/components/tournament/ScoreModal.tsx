@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Minus, Plus, Check, Sparkles } from 'lucide-react';
-import { TournamentMatch, TournamentTeam } from '../../types/tournament';
+import { TournamentMatch, TournamentTeam, TournamentSettings } from '../../types/tournament';
 import { formatTeamName } from '../../utils/tournamentEngine';
+import { useTournamentStore } from '../../store/useTournamentStore';
 import { Modal } from '../common/Modal';
 
 interface ScoreModalProps {
@@ -9,6 +10,7 @@ interface ScoreModalProps {
   match: TournamentMatch | null;
   teamA?: TournamentTeam;
   teamB?: TournamentTeam;
+  settings?: TournamentSettings;
   onClose: () => void;
   onSave: (matchId: string, scoreA: number, scoreB: number) => void;
 }
@@ -18,14 +20,23 @@ export const ScoreModal: React.FC<ScoreModalProps> = ({
   match,
   teamA,
   teamB,
+  settings,
   onClose,
   onSave,
 }) => {
-  const [targetScore, setTargetScore] = useState<number>(15);
+  const storeSettings = useTournamentStore((s) => s.settings);
+  const currentSettings = settings || storeSettings;
+
+  const isGroupStage = match?.stage === 'GROUP';
+  const stageRulePoints = isGroupStage
+    ? (currentSettings?.groupStageFormat?.targetPoints ?? 21)
+    : (currentSettings?.knockoutStageFormat?.targetPoints ?? 15);
+
+  const [targetScore, setTargetScore] = useState<number>(stageRulePoints);
   const [scoreA, setScoreA] = useState<number>(0);
   const [scoreB, setScoreB] = useState<number>(0);
 
-  // Sync initial scores if editing an existing match
+  // Sync initial scores and preselect target points based on stage rules
   useEffect(() => {
     if (match) {
       if (match.scoreA !== undefined && match.scoreB !== undefined) {
@@ -35,13 +46,16 @@ export const ScoreModal: React.FC<ScoreModalProps> = ({
         const maxScore = Math.max(match.scoreA, match.scoreB);
         if ([11, 15, 21, 30].includes(maxScore)) {
           setTargetScore(maxScore);
+        } else {
+          setTargetScore(stageRulePoints);
         }
       } else {
         setScoreA(0);
         setScoreB(0);
+        setTargetScore(stageRulePoints);
       }
     }
-  }, [match]);
+  }, [match, stageRulePoints]);
 
   if (!match) return null;
 
@@ -88,24 +102,43 @@ export const ScoreModal: React.FC<ScoreModalProps> = ({
       <div className="space-y-6">
         {/* Target Format Quick Selector */}
         <div className="space-y-2">
-          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
-            Target Game Format
-          </label>
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+              Target Game Format
+            </label>
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+              <Sparkles className="w-3 h-3" />
+              Stage Rule: {stageRulePoints} pts ({isGroupStage ? 'Pool Stage' : 'Knockout Stage'})
+            </span>
+          </div>
           <div className="grid grid-cols-4 gap-2">
-            {[11, 15, 21, 30].map((pts) => (
-              <button
-                key={pts}
-                type="button"
-                onClick={() => setTargetScore(pts)}
-                className={`min-h-[48px] rounded-xl text-sm font-bold flex items-center justify-center transition-all cursor-pointer border ${
-                  targetScore === pts
-                    ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-950/30'
-                    : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
-                }`}
-              >
-                {pts} Pts
-              </button>
-            ))}
+            {[11, 15, 21, 30].map((pts) => {
+              const isDefaultRule = pts === stageRulePoints;
+              const isSelected = targetScore === pts;
+              return (
+                <button
+                  key={pts}
+                  type="button"
+                  onClick={() => setTargetScore(pts)}
+                  className={`min-h-[48px] rounded-xl text-sm font-bold flex flex-col items-center justify-center transition-all cursor-pointer border relative ${
+                    isSelected
+                      ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-950/30'
+                      : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                  }`}
+                >
+                  <span>{pts} Pts</span>
+                  {isDefaultRule && (
+                    <span
+                      className={`text-[9px] font-black uppercase tracking-wider ${
+                        isSelected ? 'text-slate-950 font-black' : 'text-emerald-400'
+                      }`}
+                    >
+                      Rule
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 

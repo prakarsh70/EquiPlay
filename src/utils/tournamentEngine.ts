@@ -3,9 +3,27 @@ import {
   GroupStanding,
   TournamentFormat,
   TournamentMatch,
+  TournamentSettings,
   TournamentTeam,
 } from '../types/tournament';
 import { TOURNAMENT_GROUPS } from '../data/tournamentSeed';
+
+export const DEFAULT_EBC_SETTINGS: TournamentSettings = {
+  tournamentName: 'EBC Badminton Championship',
+  venueName: 'Shuttlers Zone, Wakad',
+  courts: ['Court 2', 'Court 3', 'Court 4', 'Court 5'],
+  groupStageFormat: {
+    sets: 1,
+    targetPoints: 21,
+    pointsPerWin: 2,
+    pointsPerLoss: 0,
+  },
+  knockoutStageFormat: {
+    bestOfSets: 3,
+    targetPoints: 15,
+  },
+  standingsTieBreaker: ['POINTS', 'DIFF', 'POINTS_FOR'],
+};
 
 /**
  * Generate group stage fixtures for a group of teams.
@@ -171,8 +189,14 @@ export function generateInitialKnockoutMatches(): TournamentMatch[] {
 export function computeGroupStandings(
   group: GroupId,
   teams: TournamentTeam[],
-  matches: TournamentMatch[]
+  matches: TournamentMatch[],
+  settings?: TournamentSettings
 ): GroupStanding[] {
+  const currentSettings = settings || DEFAULT_EBC_SETTINGS;
+  const pointsPerWin = currentSettings.groupStageFormat?.pointsPerWin ?? 2;
+  const pointsPerLoss = currentSettings.groupStageFormat?.pointsPerLoss ?? 0;
+  const tieBreakers = currentSettings.standingsTieBreaker || ['POINTS', 'DIFF', 'POINTS_FOR'];
+
   const groupTeams = teams.filter((t) => t.group === group);
   const completedGroupMatches = matches.filter(
     (m) => m.group === group && m.status === 'COMPLETED'
@@ -215,6 +239,8 @@ export function computeGroupStandings(
       ? `${team.player1} & ${team.player2} (${team.alias})`
       : `${team.player1} & ${team.player2}`;
 
+    const points = won * pointsPerWin + lost * pointsPerLoss;
+
     return {
       teamId: team.id,
       teamNumber: team.teamNumber,
@@ -225,42 +251,48 @@ export function computeGroupStandings(
       pointsFor,
       pointsAgainst,
       pointDiff: pointsFor - pointsAgainst,
+      points,
       isQualified: false,
     };
   });
 
-  // Sort standings with strict tie-breaker priority
+  // Sort standings with configurable tie-breaker priority
   standings.sort((a, b) => {
-    // 1. Total Wins (Descending)
+    for (const criterion of tieBreakers) {
+      if (criterion === 'POINTS') {
+        if (b.points !== a.points) {
+          return b.points - a.points;
+        }
+        // Head-to-Head if 2 teams are tied on points
+        const teamsWithSamePoints = standings.filter((s) => s.points === a.points);
+        if (teamsWithSamePoints.length === 2) {
+          const h2hMatch = completedGroupMatches.find(
+            (m) =>
+              (m.teamAId === a.teamId && m.teamBId === b.teamId) ||
+              (m.teamAId === b.teamId && m.teamBId === a.teamId)
+          );
+          if (h2hMatch && h2hMatch.winnerTeamId) {
+            if (h2hMatch.winnerTeamId === a.teamId) return -1;
+            if (h2hMatch.winnerTeamId === b.teamId) return 1;
+          }
+        }
+      } else if (criterion === 'DIFF') {
+        if (b.pointDiff !== a.pointDiff) {
+          return b.pointDiff - a.pointDiff;
+        }
+      } else if (criterion === 'POINTS_FOR') {
+        if (b.pointsFor !== a.pointsFor) {
+          return b.pointsFor - a.pointsFor;
+        }
+      }
+    }
+
+    // Fallback: total wins
     if (b.won !== a.won) {
       return b.won - a.won;
     }
 
-    // 2. Head-to-Head Result: check if exactly 2 teams have this win count
-    const teamsWithSameWins = standings.filter((s) => s.won === a.won);
-    if (teamsWithSameWins.length === 2) {
-      const h2hMatch = completedGroupMatches.find(
-        (m) =>
-          (m.teamAId === a.teamId && m.teamBId === b.teamId) ||
-          (m.teamAId === b.teamId && m.teamBId === a.teamId)
-      );
-      if (h2hMatch && h2hMatch.winnerTeamId) {
-        if (h2hMatch.winnerTeamId === a.teamId) return -1;
-        if (h2hMatch.winnerTeamId === b.teamId) return 1;
-      }
-    }
-
-    // 3. Point Differential (Descending)
-    if (b.pointDiff !== a.pointDiff) {
-      return b.pointDiff - a.pointDiff;
-    }
-
-    // 4. Total Points For (Descending)
-    if (b.pointsFor !== a.pointsFor) {
-      return b.pointsFor - a.pointsFor;
-    }
-
-    // 5. Team Number (Ascending stable sort)
+    // Fallback: Team Number (Ascending stable sort)
     return a.teamNumber - b.teamNumber;
   });
 
@@ -276,11 +308,12 @@ export function computeGroupStandings(
  */
 export function computeAllStandings(
   teams: TournamentTeam[],
-  matches: TournamentMatch[]
+  matches: TournamentMatch[],
+  settings?: TournamentSettings
 ): Record<GroupId, GroupStanding[]> {
   const allStandings = {} as Record<GroupId, GroupStanding[]>;
   for (const group of TOURNAMENT_GROUPS) {
-    allStandings[group] = computeGroupStandings(group, teams, matches);
+    allStandings[group] = computeGroupStandings(group, teams, matches, settings);
   }
   return allStandings;
 }
@@ -602,6 +635,7 @@ export function computeRoundRobinStandings(
       pointsFor,
       pointsAgainst,
       pointDiff: pointsFor - pointsAgainst,
+      points: won * 2,
       isQualified: false,
     };
   });
@@ -758,19 +792,33 @@ export function generatePureKnockoutMatches(teams: TournamentTeam[]): Tournament
 
 /**
  * Unified Tournament Match Generator based on format and entered teams.
+ * Automatically assigns default courts sequentially if courts are provided.
  */
 export function generateTournamentMatches(
   format: TournamentFormat,
-  teams: TournamentTeam[]
+  teams: TournamentTeam[],
+  courts: string[] = DEFAULT_EBC_SETTINGS.courts
 ): TournamentMatch[] {
+  let matches: TournamentMatch[] = [];
+
   if (format === 'ROUND_ROBIN') {
-    return generateRoundRobinMatches(teams);
-  }
-  if (format === 'GROUP_KNOCKOUT' || format === 'GROUP_CONSOLATION') {
+    matches = generateRoundRobinMatches(teams);
+  } else if (format === 'GROUP_KNOCKOUT' || format === 'GROUP_CONSOLATION') {
     const groupMatches = generateAllGroupMatches(teams);
     const knockoutMatches = generateInitialKnockoutMatches();
-    return syncKnockoutTree([...groupMatches, ...knockoutMatches], teams);
+    matches = syncKnockoutTree([...groupMatches, ...knockoutMatches], teams);
+  } else {
+    matches = generatePureKnockoutMatches(teams);
   }
-  return generatePureKnockoutMatches(teams);
+
+  // Pre-assign default courts sequentially so matches don't start with "No Court"
+  if (courts && courts.length > 0) {
+    matches = matches.map((m, idx) => ({
+      ...m,
+      courtName: m.courtName || courts[idx % courts.length],
+    }));
+  }
+
+  return matches;
 }
 

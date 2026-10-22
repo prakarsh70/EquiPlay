@@ -60,7 +60,37 @@ export interface GroupStanding {
   pointsFor: number;
   pointsAgainst: number;
   pointDiff: number; // pointsFor - pointsAgainst
+  points: number; // e.g. 2 per win in EBC
   isQualified: boolean; // Top 2 in group
+}
+
+export interface TournamentSettings {
+  tournamentName: string; // Default: "EBC Badminton Championship"
+  venueName: string; // Default: "Shuttlers Zone, Wakad"
+  courts: string[]; // Default: ["Court 2", "Court 3", "Court 4", "Court 5"]
+  groupStageFormat: {
+    sets: 1;
+    targetPoints: number; // Default: 21
+    pointsPerWin: number; // Default: 2
+    pointsPerLoss: number; // Default: 0
+  };
+  knockoutStageFormat: {
+    bestOfSets: 3;
+    targetPoints: number; // Default: 15
+  };
+  standingsTieBreaker: ('POINTS' | 'DIFF' | 'POINTS_FOR')[]; // Default: ['POINTS', 'DIFF', 'POINTS_FOR']
+}
+
+export type SyncStatus = 'LOCAL' | 'PENDING' | 'SYNCED';
+
+export interface TournamentState {
+  tournamentId: string;
+  config: TournamentConfig;
+  settings: TournamentSettings;
+  teams: TournamentTeam[];
+  matches: TournamentMatch[];
+  courts: string[];
+  updatedAt: number;
 }
 
 export type TournamentTab = 'FIXTURES' | 'STANDINGS' | 'BRACKET' | 'ROSTER';

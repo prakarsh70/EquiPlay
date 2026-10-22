@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Play,
   CheckCircle2,
@@ -46,11 +46,32 @@ export const FixturesTab: React.FC<FixturesTabProps> = ({ onOpenScoreModal }) =>
     setSelectedStageFilter,
     setSelectedGroupFilter,
     assignMatchCourt,
+    autoAssignCourts,
     startMatch,
   } = useTournamentStore();
 
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'UPCOMING' | 'IN_PROGRESS' | 'COMPLETED'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Auto-backfill default courts based on availability if any loaded matches are unassigned
+  useEffect(() => {
+    if (matches.length > 0 && matches.some((m) => !m.courtName)) {
+      autoAssignCourts();
+    }
+  }, [matches, autoAssignCourts]);
+
+  // Real-time court availability computation
+  const inProgressCourts = useMemo(() => {
+    return new Set(
+      matches
+        .filter((m) => m.status === 'IN_PROGRESS' && m.courtName)
+        .map((m) => m.courtName!)
+    );
+  }, [matches]);
+
+  const availableCourts = useMemo(() => {
+    return courts.filter((c) => !inProgressCourts.has(c));
+  }, [courts, inProgressCourts]);
 
   // Filtering matches
   const filteredMatches = matches.filter((match) => {
@@ -145,6 +166,36 @@ export const FixturesTab: React.FC<FixturesTabProps> = ({ onOpenScoreModal }) =>
             ))}
           </div>
         )}
+
+        {/* Court Availability Bar */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none pt-1 border-t border-slate-800/60">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">
+            Courts:
+          </span>
+          {courts.map((court) => {
+            const isLive = inProgressCourts.has(court);
+            return (
+              <div
+                key={court}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border flex items-center gap-1.5 shrink-0 transition-colors ${
+                  isLive
+                    ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    isLive ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'
+                  }`}
+                />
+                <span>{court}</span>
+                <span className="text-[10px] font-normal opacity-75">
+                  {isLive ? 'Live' : 'Available'}
+                </span>
+              </div>
+            );
+          })}
+        </div>
 
         {/* Status Filter & Search Row */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1 border-t border-slate-800/60">
@@ -243,14 +294,21 @@ export const FixturesTab: React.FC<FixturesTabProps> = ({ onOpenScoreModal }) =>
                         aria-label="Assign court for this match"
                         value={match.courtName || ''}
                         onChange={(e) => assignMatchCourt(match.id, e.target.value)}
-                        className="text-[11px] font-bold bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-slate-300 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                        className={`text-[11px] font-bold rounded-lg px-2 py-1 focus:outline-none cursor-pointer border ${
+                          match.courtName && inProgressCourts.has(match.courtName) && match.status !== 'IN_PROGRESS'
+                            ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                            : 'bg-slate-800 border-slate-700 text-slate-200'
+                        }`}
                       >
-                        <option value="">No Court</option>
-                        {courts.map((court) => (
-                          <option key={court} value={court}>
-                            {court}
-                          </option>
-                        ))}
+                        {!match.courtName && <option value="">Auto-Assign Free Court</option>}
+                        {courts.map((court) => {
+                          const isBusy = inProgressCourts.has(court) && match.courtName !== court;
+                          return (
+                            <option key={court} value={court}>
+                              {court} {isBusy ? '• In Play' : '• Available'}
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
 
@@ -330,26 +388,35 @@ export const FixturesTab: React.FC<FixturesTabProps> = ({ onOpenScoreModal }) =>
 
                 {/* Footer Actions */}
                 <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-slate-800/60">
-                  {match.status === 'UPCOMING' && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => startMatch(match.id)}
-                        className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
-                      >
-                        <Play className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
-                        <span>Start</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onOpenScoreModal(match)}
-                        className="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-sm shadow-emerald-950/20"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.5]" />
-                        <span>Log Score</span>
-                      </button>
-                    </>
-                  )}
+                  {match.status === 'UPCOMING' && (() => {
+                    const isOccupied = match.courtName && inProgressCourts.has(match.courtName);
+                    const targetCourt =
+                      !isOccupied && match.courtName
+                        ? match.courtName
+                        : (availableCourts[0] || match.courtName || courts[0] || 'Court');
+
+                    return (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => startMatch(match.id)}
+                          className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 border border-slate-700 hover:border-emerald-500/50"
+                          title={`Start match on ${targetCourt}`}
+                        >
+                          <Play className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
+                          <span>Start on {targetCourt}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onOpenScoreModal(match)}
+                          className="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-sm shadow-emerald-950/20"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.5]" />
+                          <span>Log Score</span>
+                        </button>
+                      </>
+                    );
+                  })()}
 
                   {match.status === 'IN_PROGRESS' && (
                     <button
