@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowUpRight, Shuffle, PlayCircle, Edit3, UserCheck, Zap, Clock } from 'lucide-react';
+import { ArrowUpRight, Shuffle, PlayCircle, Edit3, UserCheck, Zap, Clock, Trash2 } from 'lucide-react';
 import { Match, SessionPlayer } from '../../types/equiplay';
 import { Button } from '../common/Button';
 
@@ -13,6 +13,7 @@ interface UpNextZoneProps {
   onReshuffle: (matchId: string) => void;
   onEditLineup: (match: Match) => void;
   onReassignCourt: (matchId: string, newCourtName: string) => void;
+  onDeleteMatch?: (matchId: string) => void;
 }
 
 /**
@@ -271,6 +272,7 @@ export const UpNextZone: React.FC<UpNextZoneProps> = ({
   onReshuffle,
   onEditLineup,
   onReassignCourt,
+  onDeleteMatch,
 }) => {
   if (upcomingMatches.length === 0) {
     return (
@@ -394,6 +396,18 @@ export const UpNextZone: React.FC<UpNextZoneProps> = ({
                     <Shuffle className="w-3.5 h-3.5" />
                     <span>Shuffle</span>
                   </button>
+
+                  {onDeleteMatch && (
+                    <button
+                      type="button"
+                      onClick={() => onDeleteMatch(match.id)}
+                      aria-label={`Discard upcoming match on ${match.courtName}`}
+                      title="Discard upcoming match"
+                      className="min-h-[44px] px-2.5 rounded-xl bg-slate-800/90 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 text-xs font-bold inline-flex items-center transition-colors border border-slate-700 hover:border-rose-500/30 shadow-sm cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
 

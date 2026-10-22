@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Swords, UserPlus } from 'lucide-react';
+import { Activity, Swords, UserPlus, Trash2 } from 'lucide-react';
 import { Match, SessionPlayer } from '../../types/equiplay';
 import { Button } from '../common/Button';
 import { ElapsedTimer } from '../common/ElapsedTimer';
@@ -9,6 +9,7 @@ interface OnCourtZoneProps {
   inProgressMatches: Match[];
   playersById: Map<string, SessionPlayer>;
   onEndMatch: (match: Match) => void;
+  onCancelMatch?: (match: Match) => void;
   onManualMatch: (courtName?: string) => void;
 }
 
@@ -131,6 +132,7 @@ export const OnCourtZone: React.FC<OnCourtZoneProps> = ({
   inProgressMatches,
   playersById,
   onEndMatch,
+  onCancelMatch,
   onManualMatch,
 }) => {
   // If 1 court: full width grid-cols-1! If 2 or more: 2 columns on desktop
@@ -320,15 +322,28 @@ export const OnCourtZone: React.FC<OnCourtZoneProps> = ({
               </div>
 
               {/* End Match & Log Score CTA */}
-              <Button
-                variant="danger"
-                size="lg"
-                fullWidth
-                onClick={() => onEndMatch(match)}
-                className="relative z-10 font-bold shadow-xl shadow-rose-950/30 min-h-[48px] text-sm"
-              >
-                End Match &amp; Log Score
-              </Button>
+              <div className="relative z-10 flex items-center gap-2">
+                <Button
+                  variant="danger"
+                  size="lg"
+                  fullWidth
+                  onClick={() => onEndMatch(match)}
+                  className="font-bold shadow-xl shadow-rose-950/30 min-h-[48px] text-sm flex-1"
+                >
+                  End Match &amp; Log Score
+                </Button>
+                {onCancelMatch && (
+                  <button
+                    type="button"
+                    onClick={() => onCancelMatch(match)}
+                    title="Cancel match & free court"
+                    className="p-3 rounded-xl bg-slate-900/90 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 border border-slate-800 hover:border-rose-500/30 transition-colors min-h-[48px] min-w-[48px] flex items-center justify-center shrink-0 cursor-pointer"
+                    aria-label={`Cancel match on ${court}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}

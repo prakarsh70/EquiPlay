@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { generateNextMatches, reshufflePairing, generateProjectedSchedule } from './matchmaker';
+import {
+  generateNextMatches,
+  reshufflePairing,
+  generateProjectedSchedule,
+  planSessionSchedule,
+} from './matchmaker';
 import { SessionPlayer } from '../types/equiplay';
 
 describe('Core Matchmaking Algorithm (generateNextMatches)', () => {
@@ -283,6 +288,99 @@ describe('Projected Schedule Generator (generateProjectedSchedule)', () => {
       [...m.teamA, ...m.teamB].forEach((id) => allPlayed.add(id));
     });
     expect(allPlayed.size).toBe(6);
+  });
+});
+
+describe('Session Sequence Planner (planSessionSchedule - Issue #3)', () => {
+  const createPlayer = (id: string, name: string): SessionPlayer => ({
+    id,
+    name,
+    isActive: true,
+    gamesPlayedToday: 0,
+    consecutiveGamesSatOut: 0,
+    arrivalTime: Date.now(),
+  });
+
+  it('10-player 1-court test case: deliberately considers combinations and partners D with I or J', () => {
+    // 10 players A through J
+    const playerLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+    const players = playerLetters.map((letter) => createPlayer(letter, `Player ${letter}`));
+
+    // Plan full 2-hour session (8 matches of 15 mins each)
+    const result = planSessionSchedule(players, {
+      totalMatches: 8,
+      sessionDurationMinutes: 120,
+      matchDurationMinutes: 15,
+      courtNames: ['Court 1'],
+    });
+
+    expect(result.validation.isFeasible).toBe(true);
+    expect(result.schedule).toHaveLength(8);
+
+    // 1. Time slots should be accurately stamped
+    expect(result.schedule[0].timeSlot).toBe('0–15 min');
+    expect(result.schedule[1].timeSlot).toBe('15–30 min');
+    expect(result.schedule[7].timeSlot).toBe('105–120 min');
+
+    // 2. Resting players should always be exactly 6 (10 - 4 = 6)
+    result.schedule.forEach((m) => {
+      expect(m.restingPlayerIds).toHaveLength(6);
+    });
+
+    // 3. Zero consecutive back-to-back matches (since 10 >= 8)
+    expect(result.validation.metrics.backToBackCount).toBe(0);
+
+    // 4. Equalized games: every player should play either 3 or 4 games (32 slots / 10 = 3.2)
+    expect(result.validation.metrics.minGamesPerPlayer).toBeGreaterThanOrEqual(3);
+    expect(result.validation.metrics.maxGamesPerPlayer).toBeLessThanOrEqual(4);
+
+    // 5. CRITICAL FIX FOR ISSUE #3:
+    // Verify that Player D partners with I or J in at least one match across the sequence!
+    const dPartners: string[] = [];
+    result.schedule.forEach((m) => {
+      if (m.teamA.includes('D')) {
+        const partner = m.teamA[0] === 'D' ? m.teamA[1] : m.teamA[0];
+        dPartners.push(partner);
+      } else if (m.teamB.includes('D')) {
+        const partner = m.teamB[0] === 'D' ? m.teamB[1] : m.teamB[0];
+        dPartners.push(partner);
+      }
+    });
+
+    const dPartneredWithIorJ = dPartners.includes('I') || dPartners.includes('J');
+    expect(dPartneredWithIorJ).toBe(true);
+
+    // 6. High variety score
+    expect(result.validation.metrics.varietyScorePercent).toBeGreaterThanOrEqual(75);
+  });
+
+  it('detects and reports mathematical impossibilities for rules', () => {
+    // 6 players on 1 court
+    const sixPlayers = ['A', 'B', 'C', 'D', 'E', 'F'].map((l) => createPlayer(l, l));
+    const resultSix = planSessionSchedule(sixPlayers, {
+      totalMatches: 4,
+      courtNames: ['Court 1'],
+    });
+
+    // Impossible to avoid back-to-back with 6 players (needs 8)
+    const hasBackToBackWarning = resultSix.validation.warnings.some((w) =>
+      w.includes('Zero back-to-back matches is mathematically impossible')
+    );
+    expect(hasBackToBackWarning).toBe(true);
+
+    // Non-divisible total slots reports equal games impossibility
+    const hasEqualGamesWarning = resultSix.validation.warnings.some((w) =>
+      w.includes('Exact equal games is mathematically impossible')
+    );
+    expect(hasEqualGamesWarning).toBe(true);
+  });
+
+  it('reports isFeasible: false when less than 4 players are provided', () => {
+    const twoPlayers = ['A', 'B'].map((l) => createPlayer(l, l));
+    const result = planSessionSchedule(twoPlayers);
+    expect(result.validation.isFeasible).toBe(false);
+    expect(result.schedule).toHaveLength(0);
+    expect(result.validation.warnings[0]).toContain('At least 4 active players');
   });
 });
 
