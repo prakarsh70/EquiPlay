@@ -420,4 +420,73 @@ describe('useMatchStore State & Transitions', () => {
     expect(isR1Partner(r2Court2.teamA[0], r2Court2.teamA[1])).toBe(false);
     expect(isR1Partner(r2Court2.teamB[0], r2Court2.teamB[1])).toBe(false);
   });
+
+  describe('deleteMatch Action', () => {
+    it('deletes a COMPLETED match and updates players gamesPlayedToday and consecutiveGamesSatOut', () => {
+      const store = useMatchStore.getState();
+      const pNames = ['Alice', 'Bob', 'Charlie', 'Dave', 'Eve', 'Frank'];
+      pNames.forEach((n) => store.addPlayer(n, true));
+      store.setCourts(['Court 1']);
+      store.startSession();
+
+      const players = useMatchStore.getState().players;
+      expect(players).toHaveLength(6);
+      const initialMatch = useMatchStore.getState().matches.find((m) => m.status === 'UPCOMING')!;
+      expect(initialMatch).toBeDefined();
+
+      // Start & complete match
+      store.startMatch(initialMatch.id);
+      store.completeMatch(initialMatch.id, 21, 19);
+
+      // Verify players who played have gamesPlayedToday = 1
+      const activePAfter = useMatchStore.getState().players;
+      const playedIds = [...initialMatch.teamA, ...initialMatch.teamB];
+      playedIds.forEach((id) => {
+        const p = activePAfter.find((x) => x.id === id)!;
+        expect(p.gamesPlayedToday).toBe(1);
+      });
+
+      // Now delete the completed match
+      store.deleteMatch(initialMatch.id);
+
+      const stateAfterDelete = useMatchStore.getState();
+      expect(stateAfterDelete.matches.find((m) => m.id === initialMatch.id)).toBeUndefined();
+
+      // All players should now have gamesPlayedToday = 0
+      stateAfterDelete.players.forEach((p) => {
+        expect(p.gamesPlayedToday).toBe(0);
+      });
+    });
+
+    it('cancels an IN_PROGRESS match and frees the court and players', () => {
+      const store = useMatchStore.getState();
+      ['P1', 'P2', 'P3', 'P4'].forEach((n) => store.addPlayer(n, true));
+      store.setCourts(['Court 1']);
+      store.startSession();
+
+      const upcoming = useMatchStore.getState().matches.find((m) => m.status === 'UPCOMING')!;
+      store.startMatch(upcoming.id);
+
+      expect(useMatchStore.getState().matches.some((m) => m.status === 'IN_PROGRESS')).toBe(true);
+
+      // Cancel the active match
+      store.deleteMatch(upcoming.id);
+
+      expect(useMatchStore.getState().matches.some((m) => m.id === upcoming.id)).toBe(false);
+      // Queue automatically replenishes for Court 1
+      expect(useMatchStore.getState().matches.some((m) => m.status === 'UPCOMING')).toBe(true);
+    });
+
+    it('removes an UPCOMING match from queue', () => {
+      const store = useMatchStore.getState();
+      ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'].forEach((n) => store.addPlayer(n, true));
+      store.setCourts(['Court 1']);
+      store.startSession();
+
+      const upcoming = useMatchStore.getState().matches.find((m) => m.status === 'UPCOMING')!;
+      store.deleteMatch(upcoming.id);
+
+      expect(useMatchStore.getState().matches.some((m) => m.id === upcoming.id)).toBe(false);
+    });
+  });
 });

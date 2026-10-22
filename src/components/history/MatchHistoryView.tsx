@@ -9,14 +9,17 @@ import {
   Coffee,
   Sparkles,
   Clock,
+  Trash2,
 } from 'lucide-react';
 import { useMatchStore } from '../../store/useMatchStore';
+import { Match } from '../../types/equiplay';
 import { Leaderboard } from './Leaderboard';
 import { formatDuration } from '../../utils/time';
 import { computeRankings } from '../../utils/ranking';
 import { generateProjectedSchedule } from '../../utils/matchmaker';
 import { Button } from '../common/Button';
 import { ElapsedTimer } from '../common/ElapsedTimer';
+import { ConfirmModal } from '../modals/ConfirmModal';
 
 interface MatchHistoryViewProps {
   showBackButton?: boolean;
@@ -25,8 +28,9 @@ interface MatchHistoryViewProps {
 export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
   showBackButton = true,
 }) => {
-  const { matches, players, setView, config } = useMatchStore();
+  const { matches, players, setView, config, deleteMatch } = useMatchStore();
   const [copied, setCopied] = useState(false);
+  const [matchToDelete, setMatchToDelete] = useState<Match | null>(null);
 
   // Player lookup
   const playerMap = useMemo(
@@ -241,6 +245,7 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
                   <th className="py-3 px-3 text-left">Team B</th>
                   <th className="py-3 px-3 text-center hidden sm:table-cell">Duration</th>
                   <th className="py-3 px-3 text-center">Result</th>
+                  <th className="py-3 px-3 text-center w-16">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-medium">
@@ -263,7 +268,14 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
                         #{idx + 1}
                       </td>
                       <td className="py-3 px-3 font-semibold text-slate-300">
-                        {m.courtName}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span>{m.courtName}</span>
+                          {m.isManualLineup && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                              Manual
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td
                         className={`py-3 px-3 text-right ${
@@ -305,6 +317,17 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
                         >
                           {teamAWon ? 'Team A Won' : 'Team B Won'}
                         </span>
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setMatchToDelete(m)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                          title="Delete match record"
+                          aria-label={`Delete match ${idx + 1}`}
+                        >
+                          <Trash2 className="w-4 h-4 inline" />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -484,6 +507,21 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
       <section className="space-y-3 pt-4 border-t border-slate-800/80">
         <Leaderboard players={players} completedMatches={completedMatches} />
       </section>
+
+      {/* Delete Match Confirmation Modal */}
+      {matchToDelete && (
+        <ConfirmModal
+          isOpen={Boolean(matchToDelete)}
+          title="Delete Match Record?"
+          message="Are you sure you want to delete this match record? It will be permanently removed from the session log and player statistics will be automatically recalculated."
+          confirmLabel="Delete Match"
+          onConfirm={() => {
+            deleteMatch(matchToDelete.id);
+            setMatchToDelete(null);
+          }}
+          onCancel={() => setMatchToDelete(null)}
+        />
+      )}
     </div>
   );
 };

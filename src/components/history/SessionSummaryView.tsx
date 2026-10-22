@@ -13,17 +13,20 @@ import {
   Calendar,
   Swords,
   ShieldCheck,
+  Trash2,
 } from 'lucide-react';
 import { useMatchStore } from '../../store/useMatchStore';
+import { Match } from '../../types/equiplay';
 import { formatDuration } from '../../utils/time';
 import { computeRankings } from '../../utils/ranking';
 import { Button } from '../common/Button';
 import { ConfirmModal } from '../modals/ConfirmModal';
 
 export const SessionSummaryView: React.FC = () => {
-  const { config, players, matches, resumeSession, resetSession } = useMatchStore();
+  const { config, players, matches, resumeSession, resetSession, deleteMatch } = useMatchStore();
   const [copied, setCopied] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [matchToDelete, setMatchToDelete] = useState<Match | null>(null);
 
   // Trigger celebration confetti on mount
   useEffect(() => {
@@ -461,6 +464,16 @@ export const SessionSummaryView: React.FC = () => {
                         {pB1} & {pB2}
                       </span>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setMatchToDelete(match)}
+                      className="p-1.5 rounded-lg text-slate-600 hover:text-rose-400 hover:bg-rose-500/10 transition-colors ml-1 cursor-pointer shrink-0"
+                      title="Delete match"
+                      aria-label={`Delete match ${idx + 1}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               );
@@ -546,6 +559,21 @@ export const SessionSummaryView: React.FC = () => {
         }}
         onCancel={() => setIsResetConfirmOpen(false)}
       />
+
+      {/* Confirm Delete Match */}
+      {matchToDelete && (
+        <ConfirmModal
+          isOpen={Boolean(matchToDelete)}
+          title="Delete Match Record?"
+          message="Are you sure you want to delete this completed match? Player stats, points, and win/loss records will be updated automatically."
+          confirmLabel="Delete Match"
+          onConfirm={() => {
+            deleteMatch(matchToDelete.id);
+            setMatchToDelete(null);
+          }}
+          onCancel={() => setMatchToDelete(null)}
+        />
+      )}
     </div>
   );
 };

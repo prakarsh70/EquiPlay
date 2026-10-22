@@ -45,6 +45,7 @@ interface MatchStoreState {
   syncQueue: (forceRefresh?: boolean) => void;
   startMatch: (matchId: string) => void;
   completeMatch: (matchId: string, scoreA: number, scoreB: number) => void;
+  deleteMatch: (matchId: string) => void;
   reshuffleUpcoming: (matchId: string) => void;
   updateMatchLineup: (
     matchId: string,
@@ -542,6 +543,73 @@ export const useMatchStore = create<MatchStoreState>()(
         }));
 
         // Trigger queue refresh: newly finished court can queue next match
+        get().syncQueue(true);
+      },
+
+      deleteMatch: (matchId: string) => {
+        const { matches, players } = get();
+        const targetMatch = matches.find((m) => m.id === matchId);
+        if (!targetMatch) return;
+
+        const remainingMatches = matches.filter((m) => m.id !== matchId);
+
+        if (targetMatch.status === 'COMPLETED') {
+          const completedRemaining = remainingMatches.filter(
+            (m) => m.status === 'COMPLETED'
+          );
+
+          // Recalculate gamesPlayedToday from actual remaining completed matches
+          const updatedPlayers = players.map((player) => {
+            const gamesPlayed = completedRemaining.filter(
+              (m) => m.teamA.includes(player.id) || m.teamB.includes(player.id)
+            ).length;
+
+            return {
+              ...player,
+              gamesPlayedToday: gamesPlayed,
+            };
+          });
+
+          // Recompute consecutiveGamesSatOut chronologically based on remaining matches
+          const satOutMap = new Map<string, number>();
+          updatedPlayers.forEach((p) => {
+            if (p.isActive) satOutMap.set(p.id, 0);
+          });
+
+          const chronologicalMatches = [...completedRemaining].sort(
+            (a, b) => (a.endTime || a.startTime || 0) - (b.endTime || b.startTime || 0)
+          );
+
+          chronologicalMatches.forEach((m) => {
+            const playedSet = new Set([...m.teamA, ...m.teamB]);
+            updatedPlayers.forEach((p) => {
+              if (!p.isActive) return;
+              if (playedSet.has(p.id)) {
+                satOutMap.set(p.id, 0);
+              } else {
+                satOutMap.set(p.id, (satOutMap.get(p.id) || 0) + 1);
+              }
+            });
+          });
+
+          const finalPlayers = updatedPlayers.map((p) => ({
+            ...p,
+            consecutiveGamesSatOut: satOutMap.has(p.id)
+              ? satOutMap.get(p.id)!
+              : p.consecutiveGamesSatOut,
+          }));
+
+          set({
+            matches: remainingMatches,
+            players: finalPlayers,
+          });
+        } else {
+          set({
+            matches: remainingMatches,
+          });
+        }
+
+        // Refresh matchmaking queue
         get().syncQueue(true);
       },
 

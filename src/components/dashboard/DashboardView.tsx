@@ -30,6 +30,7 @@ export const DashboardView: React.FC = () => {
     resetSession,
     createManualMatch,
     setPlayerPartner,
+    deleteMatch,
   } = useMatchStore();
 
   // Run queue sync on dashboard load to auto-balance any idle courts
@@ -43,6 +44,7 @@ export const DashboardView: React.FC = () => {
   const [manualMatchTargetCourt, setManualMatchTargetCourt] = useState<string | null>(null);
   const [isEndSessionConfirmOpen, setIsEndSessionConfirmOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [matchToCancel, setMatchToCancel] = useState<Match | null>(null);
 
   // Quick lookup map for players
   const playersById = useMemo(() => {
@@ -151,6 +153,7 @@ export const DashboardView: React.FC = () => {
               inProgressMatches={inProgressMatches}
               playersById={playersById}
               onEndMatch={handleEndMatch}
+              onCancelMatch={(match) => setMatchToCancel(match)}
               onManualMatch={(court) => {
                 setManualMatchTargetCourt(court || config.courtNames[0]);
                 setIsManualMatchOpen(true);
@@ -168,6 +171,7 @@ export const DashboardView: React.FC = () => {
               onReshuffle={reshuffleUpcoming}
               onEditLineup={(match) => setEditingLineupMatch(match)}
               onReassignCourt={reassignMatchCourt}
+              onDeleteMatch={deleteMatch}
             />
 
             {/* Zone 3: The Bench & Roster */}
@@ -247,6 +251,21 @@ export const DashboardView: React.FC = () => {
         onConfirm={handleConfirmReset}
         onCancel={() => setIsResetConfirmOpen(false)}
       />
+
+      {/* Cancel Live Match Confirmation */}
+      {matchToCancel && (
+        <ConfirmModal
+          isOpen={Boolean(matchToCancel)}
+          title="Cancel Live Match?"
+          message={`Are you sure you want to cancel the match on ${matchToCancel.courtName}? The court and players will be freed immediately without saving scores.`}
+          confirmLabel="Cancel Match"
+          onConfirm={() => {
+            deleteMatch(matchToCancel.id);
+            setMatchToCancel(null);
+          }}
+          onCancel={() => setMatchToCancel(null)}
+        />
+      )}
     </div>
   );
 };
