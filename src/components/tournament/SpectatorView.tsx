@@ -9,6 +9,8 @@ import {
   MapPin,
   Shield,
   Activity,
+  WifiOff,
+  RefreshCw,
 } from 'lucide-react';
 import {
   GroupId,
@@ -134,7 +136,78 @@ export const SpectatorView: React.FC<SpectatorViewProps> = ({ tournamentId }) =>
     };
   }, [tournamentId]);
 
+  const [hasConnectionFailed, setHasConnectionFailed] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
+
+  useEffect(() => {
+    setHasConnectionFailed(false);
+    const timer = setTimeout(() => {
+      setTournamentState((curr) => {
+        if (!curr) {
+          setHasConnectionFailed(true);
+        }
+        return curr;
+      });
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [tournamentId]);
+
+  const handleRetryConnection = async () => {
+    setIsRetrying(true);
+    setHasConnectionFailed(false);
+    try {
+      const state = await syncService.getLatestState(tournamentId);
+      if (state) {
+        setTournamentState(state);
+      } else {
+        setHasConnectionFailed(true);
+      }
+    } catch {
+      setHasConnectionFailed(true);
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
   if (!tournamentState) {
+    if (hasConnectionFailed) {
+      return (
+        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto space-y-5">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-950/20">
+            <WifiOff className="w-8 h-8" />
+          </div>
+          <div className="space-y-1.5">
+            <h2 className="text-xl font-black text-slate-100">Unable to Connect to Live Board</h2>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              No active broadcast could be reached for tournament{' '}
+              <code className="text-amber-300 font-mono font-bold bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
+                "{tournamentId}"
+              </code>
+              .
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 w-full pt-2">
+            <button
+              type="button"
+              onClick={handleRetryConnection}
+              disabled={isRetrying}
+              className="flex-1 min-h-[46px] px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-950/20 active:scale-95 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRetrying ? 'animate-spin' : ''}`} />
+              <span>{isRetrying ? 'Reconnecting...' : 'Retry Connection'}</span>
+            </button>
+            <a
+              href="/?mode=TOURNAMENT"
+              className="flex-1 min-h-[46px] px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-slate-700"
+            >
+              <span>Go to Tournament Setup</span>
+            </a>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4">
         <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 animate-pulse mb-4">
@@ -170,6 +243,9 @@ export const SpectatorView: React.FC<SpectatorViewProps> = ({ tournamentId }) =>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                   LIVE
+                </span>
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-slate-900 border border-slate-800 text-slate-400">
+                  v2.0.0
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 flex items-center gap-1">

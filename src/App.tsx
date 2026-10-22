@@ -98,6 +98,9 @@ export const App: React.FC = () => {
               <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
                 <Users className="w-4 h-4 text-emerald-400" />
                 <span>Casual Daily</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-900 border border-slate-800 text-slate-400">
+                  v2.0.0
+                </span>
               </div>
             </div>
           </div>

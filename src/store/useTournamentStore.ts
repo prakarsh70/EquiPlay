@@ -392,12 +392,34 @@ export const useTournamentStore = create<TournamentStoreState>()(
                 .map((m) => m.courtName)
             );
 
-            // 2. If target already has an assigned court AND it is NOT in liveCourts, keep it.
-            // Otherwise, automatically pick the first free court from state.courts!
-            let chosenCourt = target.courtName;
+            // 2. Concurrency limit: Do not start more live matches than total arena courts!
+            const currentLiveCount = state.matches.filter(
+              (m) => m.status === 'IN_PROGRESS' && m.id !== matchId
+            ).length;
+
+            if (currentLiveCount >= state.courts.length) {
+              console.warn(
+                `Cannot start match: all ${state.courts.length} courts currently have active matches in progress.`
+              );
+              return state;
+            }
+
+            // 3. Dedicated court check:
+            // If the match is assigned to a specific court that is already live, block starting!
+            if (target.courtName && liveCourts.has(target.courtName)) {
+              console.warn(
+                `Cannot start match on ${target.courtName}: court already has a match in progress.`
+              );
+              return state;
+            }
+
+            // 4. If no court was assigned, pick the first AVAILABLE court
+            const chosenCourt =
+              target.courtName || state.courts.find((c) => !liveCourts.has(c));
+
             if (!chosenCourt || liveCourts.has(chosenCourt)) {
-              const freeCourt = state.courts.find((c) => !liveCourts.has(c));
-              chosenCourt = freeCourt || chosenCourt || state.courts[0] || 'Court 2';
+              console.warn('Cannot start match: no courts currently available.');
+              return state;
             }
 
             return {

@@ -69,10 +69,6 @@ export const FixturesTab: React.FC<FixturesTabProps> = ({ onOpenScoreModal }) =>
     );
   }, [matches]);
 
-  const availableCourts = useMemo(() => {
-    return courts.filter((c) => !inProgressCourts.has(c));
-  }, [courts, inProgressCourts]);
-
   // Filtering matches
   const filteredMatches = matches.filter((match) => {
     // Stage filter
@@ -389,22 +385,37 @@ export const FixturesTab: React.FC<FixturesTabProps> = ({ onOpenScoreModal }) =>
                 {/* Footer Actions */}
                 <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-slate-800/60">
                   {match.status === 'UPCOMING' && (() => {
-                    const isOccupied = match.courtName && inProgressCourts.has(match.courtName);
-                    const targetCourt =
-                      !isOccupied && match.courtName
-                        ? match.courtName
-                        : (availableCourts[0] || match.courtName || courts[0] || 'Court');
+                    const isOccupied = match.courtName ? inProgressCourts.has(match.courtName) : false;
+                    const isArenaFull = inProgressCourts.size >= courts.length;
+                    const canStart = !isArenaFull && !isOccupied;
 
                     return (
                       <>
                         <button
                           type="button"
+                          disabled={!canStart}
                           onClick={() => startMatch(match.id)}
-                          className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 border border-slate-700 hover:border-emerald-500/50"
-                          title={`Start match on ${targetCourt}`}
+                          className={`min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                            canStart
+                              ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700 hover:border-emerald-500/50 cursor-pointer active:scale-95'
+                              : 'bg-slate-900/60 text-slate-500 border-slate-800/80 cursor-not-allowed opacity-60'
+                          }`}
+                          title={
+                            isArenaFull
+                              ? `All ${courts.length} courts are full. Complete an active match first.`
+                              : isOccupied
+                              ? `${match.courtName} already has an active match in progress.`
+                              : `Start match on ${match.courtName || 'Court'}`
+                          }
                         >
-                          <Play className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
-                          <span>Start on {targetCourt}</span>
+                          <Play className={`w-3.5 h-3.5 ${canStart ? 'text-emerald-400 fill-emerald-400' : 'text-slate-600'}`} />
+                          <span>
+                            {isArenaFull
+                              ? `Courts Full (${inProgressCourts.size}/${courts.length})`
+                              : isOccupied
+                              ? `${match.courtName} In Play`
+                              : `Start on ${match.courtName || 'Court'}`}
+                          </span>
                         </button>
                         <button
                           type="button"

@@ -119,6 +119,10 @@ export const TournamentDashboard: React.FC<TournamentDashboardProps> = ({
                 <span>Mode Hub</span>
               </button>
 
+              <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-900 border border-slate-800 text-slate-400">
+                v2.0.0
+              </span>
+
               {/* Sync Status Indicator */}
               <div
                 title={

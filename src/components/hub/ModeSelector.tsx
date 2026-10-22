@@ -44,11 +44,14 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({ onSelectMode }) => {
       <header className="max-w-4xl mx-auto w-full pt-4 sm:pt-8 text-center space-y-3">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold tracking-wider uppercase">
           <Sparkles className="w-3.5 h-3.5" />
-          Courtside Kinetic PWA • 100% Offline
+          <span>Courtside Kinetic PWA • Release v2.0.0</span>
         </div>
 
-        <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-100">
-          Equi<span className="text-emerald-400">Play</span>
+        <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-100 flex items-center justify-center gap-3">
+          <span>Equi<span className="text-emerald-400">Play</span></span>
+          <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-slate-400">
+            v2.0.0
+          </span>
         </h1>
         <p className="text-sm sm:text-base text-slate-400 max-w-lg mx-auto">
           Choose your arena mode. Whether you are running casual daily bench rotations
