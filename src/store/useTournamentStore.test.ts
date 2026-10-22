@@ -113,26 +113,42 @@ describe('useTournamentStore', () => {
     expect(updated?.startTime).toBeDefined();
   });
 
-  it('auto-assigns available court when starting a match if its assigned court is occupied', () => {
+  it('prevents starting a match if its assigned court is already live in play', () => {
     const { matches } = useTournamentStore.getState();
     const match1 = matches[0];
     const match2 = matches[1];
 
-    // Assign both to Court 2 manually
+    // Assign both to Court 2
     useTournamentStore.getState().assignMatchCourt(match1.id, 'Court 2');
     useTournamentStore.getState().assignMatchCourt(match2.id, 'Court 2');
 
     // Start match1 on Court 2
     useTournamentStore.getState().startMatch(match1.id);
     expect(
-      useTournamentStore.getState().matches.find((m) => m.id === match1.id)?.courtName
-    ).toBe('Court 2');
+      useTournamentStore.getState().matches.find((m) => m.id === match1.id)?.status
+    ).toBe('IN_PROGRESS');
 
-    // Start match2: since Court 2 is already busy, it automatically gets an available court (Court 3)
+    // Attempt to start match2 on Court 2: blocked because Court 2 is already in play!
     useTournamentStore.getState().startMatch(match2.id);
     const updatedMatch2 = useTournamentStore.getState().matches.find((m) => m.id === match2.id);
-    expect(updatedMatch2?.status).toBe('IN_PROGRESS');
-    expect(updatedMatch2?.courtName).toBe('Court 3');
+    expect(updatedMatch2?.status).toBe('UPCOMING');
+  });
+
+  it('prevents starting more matches than total available arena courts', () => {
+    const { matches, courts } = useTournamentStore.getState();
+    expect(courts.length).toBe(4);
+
+    // Start 4 matches on 4 distinct courts
+    for (let i = 0; i < 4; i++) {
+      useTournamentStore.getState().assignMatchCourt(matches[i].id, courts[i]);
+      useTournamentStore.getState().startMatch(matches[i].id);
+      expect(useTournamentStore.getState().matches.find((m) => m.id === matches[i].id)?.status).toBe('IN_PROGRESS');
+    }
+
+    // Try to start a 5th match: blocked because all courts are full!
+    const match5 = matches[4];
+    useTournamentStore.getState().startMatch(match5.id);
+    expect(useTournamentStore.getState().matches.find((m) => m.id === match5.id)?.status).toBe('UPCOMING');
   });
 
   it('autoAssignCourts backfills missing courts sequentially', () => {

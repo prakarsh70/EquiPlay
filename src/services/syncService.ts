@@ -128,7 +128,9 @@ class LightweightSyncService implements SyncService {
     }
 
     if (cloudConfig.supabaseUrl && cloudConfig.supabaseAnonKey) {
-      const baseUrl = cloudConfig.supabaseUrl.replace(/\/+$/, '');
+      const baseUrl = cloudConfig.supabaseUrl
+        .replace(/\/rest\/v1\/?$/, '')
+        .replace(/\/+$/, '');
       const endpoint = `${baseUrl}/rest/v1/tournaments?on_conflict=tournament_id`;
 
       const response = await fetch(endpoint, {
@@ -270,7 +272,9 @@ class LightweightSyncService implements SyncService {
   private async fetchFromCloud(tournamentId: string): Promise<TournamentState | null> {
     const cloudConfig = this.getCloudConfig();
     if (cloudConfig.supabaseUrl && cloudConfig.supabaseAnonKey) {
-      const baseUrl = cloudConfig.supabaseUrl.replace(/\/+$/, '');
+      const baseUrl = cloudConfig.supabaseUrl
+        .replace(/\/rest\/v1\/?$/, '')
+        .replace(/\/+$/, '');
       const url = `${baseUrl}/rest/v1/tournaments?tournament_id=eq.${encodeURIComponent(
         tournamentId
       )}&select=data,updated_at&order=updated_at.desc&limit=1`;
